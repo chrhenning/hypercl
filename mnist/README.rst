@@ -163,11 +163,8 @@ where :math:`i \in \{2,3\}`. For cl scenario 1 we do not need to infer the task 
 
 
 Additional notes
-By default, all hyperparameters to reproduce the results in the paper are set 
-automatically. To deactivate this behaviour, execute the scripts by additionally 
-setting `--dont_set_default` i.e. by executing:
-=======
 ----------------
+
 By default, all hyperparameters to reproduce the results in the paper are set.
 To deactivate this behaviour, execute the scripts by additionally setting 
 ``--dont_set_default`` i.e. by executing:
@@ -180,3 +177,32 @@ To deactivate this behaviour, execute the scripts by additionally setting
 We did not look into Generative Adversarial Networks empowered by hypernetworks
 in detail. To reproduce the images shown in the paper, follow the 
 training details reported in the appendix.
+
+Related work
+------------
+
+We used the code from `van de Ven et al. <https://github.com/GMvandeVen/continual-learning/>`__ to perform experiments on related work methods. See their `paper <https://arxiv.org/abs/1904.07734>`__ for more infos on the setup.
+
+For the PermutedMNIST-100 experiments, we ran their code with 5 different random seeds using the following command for `Online EWC`:
+
+.. code-block:: console
+
+    $ ./main.py --ewc --online --lambda=100 --gamma=1 --experiment permMNIST --scenario task --tasks 100 --fc-units=1000 --lr=0.0001 --iters 5000 --seed $i
+
+for `Synaptic Intelligence`
+
+.. code-block:: console
+
+    $ ./main.py --si --c=0.1 --experiment permMNIST --scenario task --tasks 100 --fc-units=1000 --lr=0.0001 --iters 5000 --seed $i
+
+and for `DGR+distill`
+
+.. code-block:: console
+
+    $ ./main.py --replay=generative --distill  --experiment permMNIST --scenario task --tasks 100 --fc-units=1000 --lr=0.0001 --iters 5000 --seed $i
+
+To assess the susceptibility of `Online EWC` on the parameter ``lambda``, we ran the following command for the ``lambda`` values ``[1, 10, 25, 50, 100, 250, 500, 1000, 2500, 5000, 7500, 10000]`` and 5 different random seeds each
+
+.. code-block:: console
+
+    $ python3 main.py --ewc --online --lambda=$i --gamma=1 --experiment permMNIST --scenario task --tasks 100 --fc-units=1000 --lr=0.0001 --iters=5000 --seed=$j

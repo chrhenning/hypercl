@@ -41,6 +41,6 @@ title={Continual learning with hypernetworks},
 author={Johannes von Oswald and Christian Henning and Jo{\~a}o Sacramento and Benjamin F. Grewe},
 booktitle={International Conference on Learning Representations},
 year={2020},
-url={https://openreview.net/forum?id=SJgwNerKvB}
+url={https://arxiv.org/abs/1906.00695}
 }
 ```
