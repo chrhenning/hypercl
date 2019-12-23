@@ -9,6 +9,7 @@
 @python_version  :3.6.6
 
 This function was copied from 
+
     https://github.com/heykeetae/Self-Attention-GAN/blob/master/sagan_models.py
 
 It was written by Cheonbok Park. Unfortunately, no license was visibly
@@ -29,6 +30,7 @@ class SelfAttnLayer(nn.Module):
     """Self-Attention Layer
 
     This type of layer was proposed by:
+
         Zhang et al., "Self-Attention Generative Adversarial Networks", 2018
         https://arxiv.org/abs/1805.08318
 
@@ -82,8 +84,10 @@ class SelfAttnLayer(nn.Module):
                 as an additional return value.
 
         Returns:
-            out: gamma * (self-)attention features + input features.
-            attention: Attention map, shape: B X N X N (N = W * H).
+            (tuple): Tuple (if ``ret_attention`` is ``True``) containing:
+
+            - **out**: gamma * (self-)attention features + input features.
+            - **attention**: Attention map, shape: B X N X N (N = W * H).
         """
         m_batchsize, C, width, height = x.size()
 
@@ -119,13 +123,14 @@ class SelfAttnLayerV2(nn.Module):
     weights easily).
 
     This type of layer was proposed by:
+
         Zhang et al., "Self-Attention Generative Adversarial Networks", 2018
         https://arxiv.org/abs/1805.08318
 
     The goal is to capture global correlations in convolutional networks (such
     as generators and discriminators in GANs).
 
-    Attributes (additional to base class):
+    Attributes:
         weight_shapes: The shapes of all parameter tensors in this layer
             (value of attribute is independent of whether "no_weights" was
             set in the constructor).
@@ -229,8 +234,10 @@ class SelfAttnLayerV2(nn.Module):
                 "weights"), when computing the output of this network.
 
         Returns:
-            out: gamma * (self-)attention features + input features.
-            attention: Attention map, shape: B X N X N (N = W * H).
+            (tuple): Tuple (if ``ret_attention`` is ``True``) containing:
+
+            - **out**: gamma * (self-)attention features + input features.
+            - **attention**: Attention map, shape: B X N X N (N = W * H).
         """
         if self._weights is None and weights is None:
             raise Exception('Layer was generated without internal weights. ' +

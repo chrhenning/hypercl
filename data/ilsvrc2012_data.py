@@ -12,48 +12,60 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+#
+# @title           :data/ilsvrc2012_data.py
+# @author          :ch
+# @contact         :henningc@ethz.ch
+# @created         :05/13/2019
+# @version         :1.0
+# @python_version  :3.6.8
 """
-@title           :data/ilsvrc2012_data.py
-@author          :ch
-@contact         :henningc@ethz.ch
-@created         :05/13/2019
-@version         :1.0
-@python_version  :3.6.8
+ILSVRC2012 Dataset
+------------------
 
-A dataset handler for the Imagenet Large Scale Visual Recognition Challenge 2012
-(ILSVRC2012) dataset, a subset of the ImageNet dataset.
+The module :mod:`data.ilsvrc2012_data` contains a  handler for the Imagenet
+Large Scale Visual Recognition Challenge 2012 (ILSVRC2012) dataset, a subset of
+the ImageNet dataset:
+
     http://www.image-net.org/challenges/LSVRC/2012/index
 
 For more details on the dataset, please refer to:
+
     Olga Russakovsky et al. ImageNet Large Scale Visual Recognition Challenge.
     *International Journal of Computer Vision 115*, no. 3 (December 1, 2015):
     211–52, https://doi.org/10.1007/s11263-015-0816-y
 
-Note, in the current implementation, this handler will not download and extract
-the dataset for you. You have to do this manually by following the instructions
-of the README.md file (which is located in the same folder as this file).
+.. note::
+    In the current implementation, this handler will not download and extract
+    the dataset for you. You have to do this manually by following the
+    instructions of the README file (which is located in the same folder as this
+    file).
 
-Note, we use the validation set as test set. A new (custom) validation set will
-be created by taking the first "n" samples from each training class as
-validation samples, where "n" is configured by the user.
+.. note::
+    We use the validation set as test set. A new (custom) validation set will
+    be created by taking the first :math:`n` samples from each training class as
+    validation samples, where :math:`n` is configured by the user.
 
-Note, this dataset has not yet been prepared for Tensorflow use!
+.. note::
+    This dataset has not yet been prepared for Tensorflow use!
 
-When using PyTorch, this class will create dataset classes for you
-    torch.utils.data.Dataset
-for the training, testing and validation set. Afterwards, you can use these
-dataset instances to create data loaders:
+When using PyTorch, this class will create dataset classes
+(:class:`torch.utils.data.Dataset`) for you for the training, testing and
+validation set. Afterwards, you can use these dataset instances to create data
+loaders:
+
+.. code-block:: python
 
     train_loader = torch.utils.data.DataLoader(
-        ilsvrc2012_data.torch_dataset_train, batch_size=256, shuffle=True,
+        ilsvrc2012_data.torch_train, batch_size=256, shuffle=True,
         num_workers=4, pin_memory=True)
 
 You should then use these Pytorch data loaders rather than class internal
 methods to work with the dataset.
 
 PyTorch data augmentation is applied as defined by the method
-    torch_input_transforms()
-Images will be resized and cropped to size 224 x 224.
+:meth:`ILSVRC2012Data.torch_input_transforms`. Images will be resized and
+cropped to size 224 x 224.
 """
 # FIXME We currently rely too much on the internals of class ImageFolder.
 import torchvision
@@ -85,44 +97,49 @@ class ILSVRC2012Data(LargeImgDataset):
     """An instance of the class shall represent the ILSVRC2012 dataset.
 
     The input data of the dataset will be strings to image files. The output
-    data corresponds to object labels according to the ILSVRC2012_ID - 1.
+    data corresponds to object labels according to the ``ILSVRC2012_ID`` - 1.
 
-    Note, this is different from many other ILSVRC2012 data handlers, where the
-    labels are computed based on the order of the training folder names (which
-    correspond to WordNet IDs (WNID)).
+    Note:
+        This is different from many other ILSVRC2012 data handlers, where the
+        labels are computed based on the order of the training folder names
+        (which correspond to WordNet IDs (``WNID``)).
 
-    Attributes: (additional to baseclass):
-    """
-    _TRAIN_FOLDER = 'train'
-    _VAL_FOLDER = 'val'
-    _META_FILE = os.path.join('meta', 'data', 'meta.mat')
-
-    def __init__(self, data_path, use_one_hot=False, num_val_per_class=0):
-        """Read the ILSVRC2012 dataset.
-
-        Note, the dataset has to be already downloaded and extracted before
+    Note:
+        The dataset has to be already downloaded and extracted before
         this method can be called. See the local README file for details.
 
-        Args:
-            data_path: Where should the dataset be read from? If not existing,
-                the dataset will be downloaded into this folder.
-            use_one_hot (default: False): Whether the class labels should be
-                represented in a one-hot encoding. Note, class labels
-                correspond to the ILSVRC2012_ID minus 1 (from 0 to 999).
-                Note, this option does not influence the internal PyTorch
-                Dataset classes, that can be used in conjunction with
-                PyTorch data loaders.
-            num_val_per_class: The number of validation samples per class.
-                Note, the actual ILSVRC2012 validation set is used as test set
+    Args:
+        data_path (str): Where should the dataset be read from? If not existing,
+            the dataset will be downloaded into this folder.
+        use_one_hot (bool): Whether the class labels should be
+            represented in a one-hot encoding. Note, class labels
+            correspond to the ``ILSVRC2012_ID`` minus 1 (from 0 to 999).
+
+            .. note::
+                This option does not influence the internal PyTorch
+                Dataset classes (e.g., cmp.
+                :attr:`data.large_img_dataset.LargeImgDataset.torch_train`),
+                that can be used in conjunction with PyTorch data loaders.
+        num_val_per_class (int): The number of validation samples per class.
+
+            .. note::
+                The actual ILSVRC2012 validation set is used as test set
                 by this data handler. Therefore, a new validation set is
                 constructed (if value greater than 0), using the same amount of
                 samples per class.
                 For instance: If value 50 is given, a validation set of size
                 50 * 1000 = 50,000 is constructed (these samples will be removed
                 from the training set).
-                Note, validation samples use the same data augmentation pipeline
+
+            .. note::
+                Validation samples use the same data augmentation pipeline
                 as test samples.
-        """
+    """
+    _TRAIN_FOLDER = 'train'
+    _VAL_FOLDER = 'val'
+    _META_FILE = os.path.join('meta', 'data', 'meta.mat')
+
+    def __init__(self, data_path, use_one_hot=False, num_val_per_class=0):
         # 732 is the minimum number of training samples per class in
         # ILSVRC2012.
         assert(num_val_per_class < 732)
@@ -377,11 +394,15 @@ class ILSVRC2012Data(LargeImgDataset):
         self._wnid_to_clbl = wnid2lbl
 
     def to_common_labels(self, outputs):
-        """Translate a given set of labels (that correspond to the ILSVRC2012_ID
-        (minus one) of their images) back to the labels provided by the
-            torchvision.datasets.ImageFolder
-        class. Note, this would be the label convention for ImageNet used by
-        PyTorch examples.
+        """Translate between label conventions.
+
+        Translate a given set of labels (that correspond to the
+        ``ILSVRC2012_ID`` (minus one) of their images) back to the labels
+        provided by the :class:`torchvision.datasets.ImageFolder` class.
+
+        Note:
+            This would be the label convention for ImageNet used by
+            PyTorch examples.
 
         Args:
             outputs: Targets (as integers or 1-hot encodings).
@@ -424,12 +445,13 @@ class ILSVRC2012Data(LargeImgDataset):
             https://git.io/fjWPZ
 
         Returns:
-            A tuple:
-                train_transform: A transforms pipeline that applies random
-                    transformations, normalizes the image and resizes/crops it
-                    to a final size of 224 x 224 pixels.
-                test_transform: Similar to train_transform, but no random
-                    transformations are applied.
+            (tuple): Tuple containing:
+
+                - **train_transform**: A transforms pipeline that applies random
+                  transformations, normalizes the image and resizes/crops it
+                  to a final size of 224 x 224 pixels.
+                - **test_transform**: Similar to train_transform, but no random
+                  transformations are applied.
         """
         normalize = transforms.Normalize(mean=[0.485, 0.456, 0.406],
                                          std=[0.229, 0.224, 0.225])
@@ -452,10 +474,10 @@ class ILSVRC2012Data(LargeImgDataset):
 
     def _plot_sample(self, fig, inner_grid, num_inner_plots, ind, inputs,
                      outputs=None, predictions=None):
-        """This method overwrites a baseclass method. Please see docstring of
-        corresponding super class.
+        """Implementation of abstract method
+        :meth:`data.dataset.Dataset._plot_sample`.
         
-        Note, label ID in the plot correspond to ILSVRC2012_ID minus 1.
+        Note, label ID in the plot correspond to ``ILSVRC2012_ID`` minus 1.
         """
         ax = plt.Subplot(fig, inner_grid[0])
 

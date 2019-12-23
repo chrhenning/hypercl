@@ -25,12 +25,18 @@ that we can consistently use these networks without knowing their specific
 implementation.
 """
 from abc import ABC, abstractmethod
+import numpy as np
+from warnings import warn
 
 class CLHyperNetInterface(ABC):
     """A general interface for task-conditioned hypernetworks, that are used
     for continual learning.
 
-    Attributes (additional to base class):
+    .. deprecated:: 1.0
+        Please use module :class:`hnets.hnet_interface.CLHyperNetInterface`
+        instead.
+
+    Attributes:
         theta: Parameters of the hypernetwork (excluding task embeddings).
         num_weights: Total number of parameters in this network, including
             task embeddings.
@@ -43,6 +49,7 @@ class CLHyperNetInterface(ABC):
             weight tensor belonging to "theta". Note, the returned list is
             independent of whether "has_theta" is True.
         has_task_embs: Whether the hypernet has internal task embeddings.
+        num_task_embs: Number of task embeddings available internally.
         requires_ext_input: Whether the hypernet expects an external input
             (e.g., another condition in addition to the current task).
         target_shapes: A list of list of integers representing the shapes of
@@ -50,12 +57,11 @@ class CLHyperNetInterface(ABC):
             the hypernet output).
     """
     def __init__(self):
-        """Initialize the network.
-
-        Args:
-
-        """
+        """Initialize the network."""
         super(CLHyperNetInterface, self).__init__()
+
+        warn('Please use class "hnets.hnet_interface.CLHyperNetInterface" ' +
+             'instead.', DeprecationWarning)
 
         # The following member variables have to be set by all classes that
         # implement this interface.
@@ -89,7 +95,8 @@ class CLHyperNetInterface(ABC):
         the hypernetwork in a Continual Learning setting.
 
         Returns:
-            A torch.nn.ParameterList or None, if this network has no weights.
+            A :class:`torch.nn.ParameterList` or None, if this network has no
+            weights.
         """
         return self._theta
 
@@ -123,6 +130,12 @@ class CLHyperNetInterface(ABC):
         return self._task_embs is not None
 
     @property
+    def num_task_embs(self):
+        """Getter for read-only attribute num_task_embs."""
+        assert(self.has_task_embs)
+        return len(self._task_embs)
+
+    @property
     def requires_ext_input(self):
         """Getter for read-only attribute requires_ext_input."""
         return self._size_ext_input is not None
@@ -142,6 +155,7 @@ class CLHyperNetInterface(ABC):
         Returns:
             A list of Parameter tensors.
         """
+        assert(self.has_task_embs)
         return self._task_embs
 
     def get_task_emb(self, task_id):
@@ -154,6 +168,7 @@ class CLHyperNetInterface(ABC):
         Returns:
             A list of Parameter tensors.
         """
+        assert(self.has_task_embs)
         return self._task_embs[task_id]
 
     @abstractmethod
@@ -195,7 +210,11 @@ class MainNetInterface(ABC):
     weights, such that the remaining weights have to be passed through the
     forward function (e.g., they may be generated through a hypernetwork).
 
-    Attributes (additional to base class):
+    .. deprecated:: 1.0
+        Please use module :class:`mnets.mnet_interface.MainNetInterface`
+        instead.
+
+    Attributes:
         weights: A list of all internal weights of the main network. If all
             weights are assumed to be generated externally, then this
             attribute will be None.
@@ -214,6 +233,8 @@ class MainNetInterface(ABC):
             Note, if this attribute is set to True, it is implicitly assumed
             that if "hyper_shapes" is not None, the last two entries of
             "hyper_shapes" are the weights and biases of this layer.
+        num_params: The total number of weights in the parameter tensors
+            described by the attribute "param_shapes".
     """
     def __init__(self):
         """Initialize the network.
@@ -223,11 +244,15 @@ class MainNetInterface(ABC):
         """
         super(MainNetInterface, self).__init__()
 
+        warn('Please use class "mnets.mnet_interface.MainNetInterface" ' +
+             'instead.', DeprecationWarning)
+
         # The following member variables have to be set by all classes that
         # implement this interface.
         self._weights = None
         self._all_shapes = None
         self._hyper_shapes = None
+        self._num_params = None
         self._has_bias = None
         self._has_fc_out = None
 
@@ -251,8 +276,8 @@ class MainNetInterface(ABC):
         """Getter for read-only attribute weights.
 
         Returns:
-            A torch.nn.ParameterList or None, if no parameters are internally
-            maintained.
+            A :class:`torch.nn.ParameterList` or None, if no parameters are
+            internally maintained.
         """
         return self._weights
 
@@ -283,6 +308,18 @@ class MainNetInterface(ABC):
     def has_fc_out(self):
         """Getter for read-only attribute has_fc_out."""
         return self._has_fc_out
+
+    @property
+    def num_params(self):
+        """Getter for read-only attribute num_params.
+
+        Returns:
+            Total number of parameters in the network.
+        """
+        if self._num_params is None:
+            self._num_params = int(np.sum([np.prod(l) for l in
+                                           self.param_shapes]))
+        return self._num_params
 
 if __name__ == '__main__':
     pass

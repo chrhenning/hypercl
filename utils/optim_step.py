@@ -84,11 +84,11 @@
 @python_version  :3.6.7
 
 PyTorch optimizers don't provide the ability to get a lookahead of the change to
-the parameters applied by the "step()" function. Therefore, this module
-copies step() functions from some optimizers, but without applying the weight
-change and without making changes to the internal state of an optimizer, such
-that the user can get the change of parameters that would be executed by the
-optimizer.
+the parameters applied by the :meth:`torch.optim.Optimizer.step` function.
+Therefore, this module copies `step()` functions from some optimizers, but
+without applying the weight change and without making changes to the internal
+state of an optimizer, such that the user can get the change of parameters that
+would be executed by the optimizer.
 """
 
 from torch import optim
@@ -96,30 +96,32 @@ import torch
 import math
 
 def calc_delta_theta(optimizer, use_sgd_change, lr=None, detach_dt=True):
-    """Calculate delta theta, i.e., the change in trainable parameters (theta)
-    in order to minimize the task-specific loss.
+    r"""Calculate :math:`\Delta\theta`, i.e., the change in trainable parameters
+    (:math:`\theta`) in order to minimize the task-specific loss.
 
-    Note, one has to call backward() on a desired loss before calling this
-    function, otherwise there are no gradients to compute the weight change that
-    the optimizer would cause. Hence, this method is called in between
-    backward() and step().
+    **Note**, one has to call :func:`torch.autograd.backward` on a
+    desired loss before calling this function, otherwise there are no gradients
+    to compute the weight change that the optimizer would cause. Hence, this
+    method is called in between :func:`torch.autograd.backward` and
+    :meth:`torch.optim.Optimizer.step`.
 
     Note, by default, gradients are detached from the computational graph.
 
     Args:
-        optimizer: The optimizer that will be used to change theta.
-        use_sgd_change: If True, then we won't calculate the actual step done
-            by the current optimizer, but the one that would be done by a simple
-            SGD optimizer.
-        lr: Has to be specified if "use_sgd_change" is True. The learning rate
-            if the optimizer.
-        detach_dt: Whether delta theta should be detached from the
-            computational graph. Note, in order to backprop through delta
-            theta, you have to call "backwards" with "create_graph" set to
-            True before calling this method.
+        optimizer: The optimizer that will be used to change :math:`\theta`.
+        use_sgd_change: If :code:`True`, then we won't calculate the actual step
+            done by the current optimizer, but the one that would be done by a
+            simple SGD optimizer.
+        lr: Has to be specified if `use_sgd_change` is :code:`True`. The
+            learning rate if the optimizer.
+        detach_dt: Whether :math:`\Delta\theta` should be detached from the
+            computational graph. Note, in order to backprop through
+            :math:`\Delta\theta`, you have to call
+            :func:`torch.autograd.backward` with `create_graph` set to
+            :code:`True` before calling this method.
 
     Returns:
-        Delta theta.
+        :math:`\Delta\theta`
     """
     assert(not use_sgd_change or lr is not None)
 
@@ -146,6 +148,7 @@ def calc_delta_theta(optimizer, use_sgd_change, lr=None, detach_dt=True):
 def sgd_step(optimizer, detach_dp=True):
     """Performs a single optimization step using the SGD optimizer. The code
     has been copied from:
+
         https://git.io/fjYit
 
     Note, this function does not change the inner state of the given
@@ -154,14 +157,15 @@ def sgd_step(optimizer, detach_dp=True):
     Note, gradients are cloned and detached by default.
 
     Args:
-        optimizer: An instance of class torch.optim.SGD.
+        optimizer: An instance of class :class:`torch.optim.SGD`.
         detach_dp: Whether gradients are detached from the computational
-            graph. Note, "False" only makes sense if "backwards" was called with
-            the argument "create_graph" set to True.
+            graph. Note, :code:`False` only makes sense if
+            func:`torch.autograd.backward` was called with the argument
+            `create_graph` set to :code:`True`.
 
     Returns:
-        A list of gradient changes d_p that would be applied by this
-        optimizer to all parameters when calling step().
+        A list of gradient changes `d_p` that would be applied by this
+        optimizer to all parameters when calling :meth:`torch.optim.SGD.step`.
     """
     assert(isinstance(optimizer, optim.SGD))
 
@@ -210,6 +214,7 @@ def sgd_step(optimizer, detach_dp=True):
 def adam_step(optimizer, detach_dp=True):
     """Performs a single optimization step using the Adam optimizer. The code
     has been copied from:
+
         https://git.io/fjYP3
 
     Note, this function does not change the inner state of the given
@@ -218,14 +223,15 @@ def adam_step(optimizer, detach_dp=True):
     Note, gradients are cloned and detached by default.
 
     Args:
-        optimizer: An instance of class torch.optim.Adam.
+        optimizer: An instance of class :class:`torch.optim.Adam`.
         detach_dp: Whether gradients are detached from the computational
-            graph. Note, "False" only makes sense if "backwards" was called with
-            the argument "create_graph" set to True.
+            graph. Note, :code:`False` only makes sense if
+            func:`torch.autograd.backward` was called with the argument
+            `create_graph` set to :code:`True`.
 
     Returns:
-        A list of gradient changes d_p that would be applied by this
-        optimizer to all parameters when calling step().
+        A list of gradient changes `d_p` that would be applied by this
+        optimizer to all parameters when calling :meth:`torch.optim.Adam.step`.
     """
     assert (isinstance(optimizer, optim.Adam))
 
@@ -310,6 +316,7 @@ def adam_step(optimizer, detach_dp=True):
 def rmsprop_step(optimizer, detach_dp=True):
     """Performs a single optimization step using the RMSprop optimizer. The code
     has been copied from:
+
         https://git.io/fjurp
 
     Note, this function does not change the inner state of the given
@@ -318,14 +325,16 @@ def rmsprop_step(optimizer, detach_dp=True):
     Note, gradients are cloned and detached by default.
 
     Args:
-        optimizer: An instance of class torch.optim.RMSprop.
+        optimizer: An instance of class :class:`torch.optim.Adam`.
         detach_dp: Whether gradients are detached from the computational
-            graph. Note, "False" only makes sense if "backwards" was called with
-            the argument "create_graph" set to True.
+            graph. Note, :code:`False` only makes sense if
+            func:`torch.autograd.backward` was called with the argument
+            `create_graph` set to :code:`True`.
 
     Returns:
-        A list of gradient changes d_p that would be applied by this
-        optimizer to all parameters when calling step().
+        A list of gradient changes `d_p` that would be applied by this
+        optimizer to all parameters when calling
+        :meth:`torch.optim.RMSprop.step`.
     """
     assert (isinstance(optimizer, optim.RMSprop))
 

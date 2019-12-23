@@ -12,24 +12,27 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+#
+# @title           :data/celeba_data.py
+# @author          :ch
+# @contact         :henningc@ethz.ch
+# @created         :09/20/2018
+# @version         :1.0
+# @python_version  :3.6.6
 """
-@title           :data/celeba_data.py
-@author          :ch
-@contact         :henningc@ethz.ch
-@created         :09/20/2018
-@version         :1.0
-@python_version  :3.6.6
+CelebA Dataset
+--------------
 
-A handler for the CelebA dataset.
+The module :mod:`data.celeba_data` contains a handler for the CelebA dataset.
 
 More information about the dataset can be retrieved from:
     http://mmlab.ie.cuhk.edu.hk/projects/CelebA.html
 
 Note, in the current implementation, this handler will not download and extract
 the dataset for you. You have to do this manually by following the instructions
-of the README.md file (which is located in the same folder as this file).
+of the README file (which is located in the same folder as this file).
 
-Note, this dataset has not yet been prepared for PyTorch use!
+**Note, this dataset has not yet been prepared for PyTorch use!**
 """
 
 import numpy as np
@@ -48,7 +51,17 @@ class CelebAData(LargeImgDataset):
     data will be vectors of booleans, denoting whether a certain type of
     attribute is present in the picture.
 
-    Attributes: (additional to baseclass):
+    .. note::
+        The dataset has to be already downloaded and extracted before
+        this class can be instantiated. See the local README file for details.
+
+    Args:
+        data_path (str): Where should the dataset be read from?
+        use_png (bool): Whether the png rather than the jpeg images should be
+            used. Note, this class only considers the aligned and cropped
+            images.
+        shape (optional): If given, this images loaded from disk will be
+            reshaped to that shape.
     """
     # Folder containing dataset.
     _ROOT = 'CelebA'
@@ -72,20 +85,6 @@ class CelebAData(LargeImgDataset):
     _JPG_IMGS = os.path.join(_IMG, 'img_align_celeba')
     
     def __init__(self, data_path, use_png=False, shape=None):
-        """Read the CelebA dataset.
-
-        Note, the dataset has to be already downloaded and extracted before
-        this method can be called. See the local README file for details.
-
-        Args:
-            data_path: Where should the dataset be read from?
-            use_png (default: False): Whether the png rather than the jpeg
-                                      images should be used. Note, this class
-                                      only considers the aligned and cropped
-                                      images.
-            shape (optional): If given, this images loaded from disk will be
-                              reshaped to that shape.
-        """
         if use_png:
             imgs_path = os.path.join(data_path, CelebAData._PNG_IMGS)
         else:
@@ -289,8 +288,8 @@ class CelebAData(LargeImgDataset):
         dataset.
 
         Returns:
-            A list of attributes. The order of the list will have the same
-            order as the output labels.
+            (list): A list of attributes. The order of the list will have the
+            same order as the output labels.
         """
         return self._data['celeba']['attr_names']
 
@@ -300,31 +299,8 @@ class CelebAData(LargeImgDataset):
 
     def _plot_sample(self, fig, inner_grid, num_inner_plots, ind, inputs,
                      outputs=None, predictions=None):
-        """Add a custom sample plot to the given Axes object.
-
-        Note, this method is called by the "plot_samples" method.
-
-        Note, that the number of inner subplots is configured via the method:
-            _plot_config
-
-        Args:
-            fig: An instance of class matplotlib.figure.Figure, that will
-                contains the given Axes object.
-            inner_grid: An object of the class
-                matplotlib.gridspec.GridSpecFromSubplotSpec. It can be used to
-                access the subplots of a single sample via
-                    ax = plt.Subplot(fig, inner_grid[i])
-                where i is a number between 0 and num_inner_plots-1.
-                The retrieved axes has to be added to the figure via:
-                    fig.add_subplot(ax)
-            num_inner_plots: The number inner subplots.
-            ind: The index of the "outer" subplot.
-            inputs: A 2D numpy array, containing a single sample (1 row) or a
-                    np.chararray, containing the string to a single sample.
-            outputs (optional): A 2D numpy array, containing a single sample 
-                (1 row).
-            predictions (optional): A 2D numpy array, containing a single 
-                sample (1 row).
+        """Implementation of abstract method
+        :meth:`data.dataset.Dataset._plot_sample`.
         """
         ax = plt.Subplot(fig, inner_grid[0])
 

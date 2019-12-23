@@ -12,25 +12,28 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+#
+# @title           :data/cifar100_data.py
+# @author          :ch
+# @contact         :henningc@ethz.ch
+# @created         :05/02/2019
+# @version         :1.0
+# @python_version  :3.6.8
 """
-@title           :data/cifar100_data.py
-@author          :ch
-@contact         :henningc@ethz.ch
-@created         :05/02/2019
-@version         :1.0
-@python_version  :3.6.8
+CIFAR-100 Dataset
+-----------------
 
-A handler for the CIFAR 100 dataset.
+The module :mod:`data.cifar100_data` contains a handler for the CIFAR 100
+dataset.
 
 The dataset consists of 60000 32x32 colour images in 100 classes, with 600
 images per class. There are 50000 training images and 10000 test images.
 
 Information about the dataset can be retrieved from:
     https://www.cs.toronto.edu/~kriz/cifar.html
-
-FIXME: The content of this module is mostly a copy of the module 'cifar10_data'.
-These two should be merged in future.
 """
+# FIXME: The content of this module is mostly a copy of the module
+# 'cifar10_data'. These two should be merged in future.
 
 import os
 import numpy as np
@@ -46,7 +49,18 @@ from data.cifar10_data import CIFAR10Data
 class CIFAR100Data(Dataset):
     """An instance of the class shall represent the CIFAR-100 dataset.
 
-    Attributes: (additional to baseclass)
+    Args:
+        data_path (str): Where should the dataset be read from? If not existing,
+            the dataset will be downloaded into this folder.
+        use_one_hot (bool): Whether the class labels should be represented in a
+            one-hot encoding.
+        use_data_augmentation (bool, optional): Note, this option currently only
+            applies to input batches that are transformed using the class
+            member :meth:`data.dataset.Dataset.input_to_torch_tensor` (hence,
+            **only available for PyTorch**, so far).
+        validation_size (int): The number of validation samples. Validation
+            samples will be taking from the training set (the first :math:`n`
+            samples).
     """
     _DOWNLOAD_PATH = 'https://www.cs.toronto.edu/~kriz/'
     _DOWNLOAD_FILE = 'cifar-100-python.tar.gz'
@@ -58,23 +72,6 @@ class CIFAR100Data(Dataset):
 
     def __init__(self, data_path, use_one_hot=False,
                  use_data_augmentation=False, validation_size=5000):
-        """Read the CIFAR-100 object classification dataset from file.
-
-        Args:
-            data_path: Where should the dataset be read from? If not existing,
-                the dataset will be downloaded into this folder.
-            use_one_hot (default: False): Whether the class labels should be
-                represented in a one-hot encoding.
-            use_data_augmentation (optional): Note, this option currently only
-                applies to input batches that are transformed using the class
-                member "input_to_torch_tensor" (hence, only available for
-                PyTorch).
-                Note, we are using the same data augmentation pipeline as for
-                CIFAR-10.
-            validation_size: The number of validation samples. Validation
-                samples will be taking from the training set (the first n
-                samples).
-        """
         super().__init__()
 
         start = time.time()
@@ -236,31 +233,27 @@ class CIFAR100Data(Dataset):
         """This method can be used to map the internal numpy arrays to PyTorch
         tensors.
 
+        Note, this method has been overwritten from the base class.
+
         The input images are preprocessed if data augmentation is enabled.
         Preprocessing involves normalization and (for training mode) random
         perturbations.
 
         Args:
-            x: A 2D numpy array, containing inputs as provided by this dataset.
-            device: The PyTorch device onto which the input should be mapped.
-            mode: This is the same as the mode attribute in the class
-                  NetworkBase, that can be used to distinguish between training
-                  and inference (e.g., if special input processing should be
-                  used during training).
-                  Valid values are: 'train' and 'inference'.
-            force_no_preprocessing: In case preprocessing is applied to the
-                inputs (e.g., normalization or random flips/crops), this option
-                can be used to prohibit any kind of manipulation. Hence, the
-                inputs are transformed into PyTorch tensors on an "as is" basis.
+            (....): See docstring of method
+                :meth:`data.dataset.Dataset.input_to_torch_tensor`.
 
         Returns:
-            The given input x as PyTorch tensor.
+            (torch.Tensor): The given input ``x`` as PyTorch tensor.
         """
         if self._augment_inputs and not force_no_preprocessing:
             if mode == 'inference':
                 transform = self._test_transform
-            else:
+            elif mode == 'train':
                 transform = self._train_transform
+            else:
+                raise ValueError('"%s" not a valid value for argument "mode".'
+                                 % mode)
 
             return CIFAR10Data.torch_augment_images(x, device, transform)
 
@@ -270,32 +263,8 @@ class CIFAR100Data(Dataset):
 
     def _plot_sample(self, fig, inner_grid, num_inner_plots, ind, inputs,
                      outputs=None, predictions=None):
-        """Add a custom sample plot to the given Axes object.
-
-        Note, this method is called by the "plot_samples" method.
-
-        Note, that the number of inner subplots is configured via the method:
-            _plot_config
-
-        Args:
-            fig: An instance of class matplotlib.figure.Figure, that will
-                contains the given Axes object.
-            inner_grid: An object of the class
-                matplotlib.gridspec.GridSpecFromSubplotSpec. It can be used to
-                access the subplots of a single sample via
-                    ax = plt.Subplot(fig, inner_grid[i])
-                where i is a number between 0 and num_inner_plots-1.
-                The retrieved axes has to be added to the figure via:
-                    fig.add_subplot(ax)
-            num_inner_plots: The number inner subplots.
-            ind: The index of the "outer" subplot.
-            inputs: A 2D numpy array, containing a single sample (1 row).
-            outputs (optional): A 2D numpy array, containing a single sample 
-                (1 row). If this is a classification dataset, then samples are
-                given as single labels (not one-hot encoded, irrespective of
-                the attribute is_one_hot).
-            predictions (optional): A 2D numpy array, containing a single 
-                sample (1 row).
+        """Implementation of abstract method
+        :meth:`data.dataset.Dataset._plot_sample`.
         """
         ax = plt.Subplot(fig, inner_grid[0])
 
@@ -335,18 +304,11 @@ class CIFAR100Data(Dataset):
             fig.add_subplot(ax)
         
     def _plot_config(self, inputs, outputs=None, predictions=None):
-        """Defines properties, used by the method 'plot_samples'.
+        """Re-Implementation of method
+        :meth:`data.dataset.Dataset._plot_config`.
 
         This method has been overriden to ensure, that there are 2 subplots,
         in case the predictions are given.
-
-        Args:
-            The given arguments, are the same as the same-named arguments of
-            the method 'plot_samples'. They might be used by subclass
-            implementations to determine the configs.
-
-        Returns:
-            A dictionary with the plot configs.
         """
         plot_configs = super()._plot_config(inputs, outputs=outputs,
                                             predictions=predictions)

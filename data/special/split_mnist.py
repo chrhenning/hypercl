@@ -12,44 +12,52 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+#
+# @title           :split_mnist.py
+# @author          :ch
+# @contact         :henningc@ethz.ch
+# @created         :04/11/2019
+# @version         :1.0
+# @python_version  :3.6.7
 """
-@title           :classifier/split_mnist.py
-@author          :ch
-@contact         :henningc@ethz.ch
-@created         :04/11/2019
-@version         :1.0
-@python_version  :3.6.7
+Split MNIST Dataset
+^^^^^^^^^^^^^^^^^^^
 
-A wrapper for data handlers of the SplitMNIST task.
+The module :mod:`data.special.split_mnist` contains a wrapper for data
+handlers for the SplitMNIST task.
 """
 import numpy as np
 
 from data.mnist_data import MNISTData
 
-def get_split_MNIST_handlers(data_path, use_one_hot=True, validation_size=0):
-    """This method instantiates 5 objects of the class MNISTData. It will
-    then remove all samples per instance that do not belong to the
-    corresponding MNIST split.
+def get_split_MNIST_handlers(data_path, use_one_hot=True, validation_size=0,
+                             steps=2):
+    """This method instantiates 5 objects of the class :class:`SplitMNIST` which
+    will contain a disjoint set of labels.
 
     The SplitMNIST task consists of 5 tasks corresponding to the images with
     labels [0,1], [2,3], [4,5], [6,7], [8,9].
 
     Args:
         data_path: Where should the MNIST dataset be read from? If not existing,
-                the dataset will be downloaded into this folder.
-        use_one_hot (default: True): Whether the class labels should be
-            represented in a one-hot encoding.
+            the dataset will be downloaded into this folder.
+        use_one_hot: Whether the class labels should be represented in a one-hot
+            encoding.
         validation_size: The size of the validation set of each individual
             data handler.
+        steps: Number of classes to put into one data handler. If default
+            every data handler will include 2 digits, otherwise 1.
     Returns:
-        A list of data handlers, each corresponding to a SplitMNIST object,
+        A list of data handlers, each corresponding to a :class:`SplitMNIST`
+        object,
     """
     print('Creating data handlers for SplitMNIST tasks ...')
 
     handlers = []
-    for i in range(0, 10, 2):
+    assert(steps == 1 or steps == 2)
+    for i in range(0, 10, steps):
         handlers.append(SplitMNIST(data_path, use_one_hot=use_one_hot,
-            validation_size=validation_size, labels=[i,i+1]))
+            validation_size=validation_size, labels=[i, i+steps-1]))
 
     print('Creating data handlers for SplitMNIST tasks ... Done')
 
@@ -58,28 +66,22 @@ def get_split_MNIST_handlers(data_path, use_one_hot=True, validation_size=0):
 class SplitMNIST(MNISTData):
     """An instance of the class shall represent a SplitMNIST task.
 
-    Attributes: (additional to baseclass)
+    Args:
+        data_path: Where should the dataset be read from? If not existing,
+            the dataset will be downloaded into this folder.
+        use_one_hot: Whether the class labels should be represented in a
+            one-hot encoding.
+        validation_size: The number of validation samples. Validation
+            samples will be taking from the training set (the first :math:`n`
+            samples).
+        labels: The labels that should be part of this task.
+        full_out_dim: Choose the original MNIST instead of the the new
+            task output dimension. This option will affect the attributes
+            :attr:`data.dataset.Dataset.num_classes` and
+            :attr:`data.dataset.Dataset.out_shape`.
     """
     def __init__(self, data_path, use_one_hot=False, validation_size=1000,
                  labels=[0, 1], full_out_dim=False):
-        """Read the MNIST digit classification dataset from file.
-
-        This method checks whether the dataset has been read before (a pickle
-        dump has been generated). If so, it reads the dump. Otherwise, it
-        reads the data from scratch and creates a dump for future usage.
-
-        Args:
-            data_path: Where should the dataset be read from? If not existing,
-                the dataset will be downloaded into this folder.
-            use_one_hot (default: False): Whether the class labels should be
-                represented in a one-hot encoding.
-            validation_size: The number of validation samples. Validation
-                samples will be taking from the training set (the first n
-                samples).
-            labels: The labels that should be part of this task.
-            full_out_dim: Choose the original MNIST instead of the the new 
-                task output dimension
-        """
         super().__init__(data_path, use_one_hot=use_one_hot, validation_size=0)
 
         K = len(labels)
@@ -130,8 +132,12 @@ class SplitMNIST(MNISTData):
         outputs = np.concatenate([train_outs, test_outs], axis=0)
         
         if not full_out_dim:
-            # transform output [0,0,0,1,0,0,0,0,0,0] -> [0,1]
+            # Transform outputs, e.g., if 1-hot [0,0,0,1,0,0,0,0,0,0] -> [0,1]
             outputs = self.transform_outputs(outputs)
+            # Note, we may also have to adapt the output shape appropriately.
+            if self.is_one_hot:
+                self._data['out_shape'] = [len(labels)]
+
         images = np.concatenate([train_ins, test_ins], axis=0)
 
         ### Overwrite internal data structure. Only keep desired labels.
@@ -140,7 +146,7 @@ class SplitMNIST(MNISTData):
         # the user has easy access to the correct labels and has the original
         # 1-ho encodings.
         if not full_out_dim:
-            self._data['num_classes'] = 2
+            self._data['num_classes'] = len(labels)
         else:
             self._data['num_classes'] = 10
         self._data['in_data'] = images
@@ -162,8 +168,11 @@ class SplitMNIST(MNISTData):
         """Transform the outputs from the 10D MNIST dataset into proper 2D
         labels.
 
-        Example: Split with labels 2,3
+        Example:
+            Split with labels [2,3]
+
             1-hot encodings: [0,0,0,1,0,0,0,0,0,0] -> [0,1]
+
             labels: 3 -> 1
 
         Args:

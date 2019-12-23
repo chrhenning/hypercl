@@ -30,28 +30,30 @@ import numpy as np
 from utils.module_wrappers import CLHyperNetInterface
 
 def get_current_targets(task_id, hnet):
-    """For all j < task_id, compute the output of the hypernetwork. This
-    output will be detached from the graph and cloned before being added to the
-    return list of this function.
+    r"""For all :math:`j < \text{task\_id}`, compute the output of the
+    hypernetwork. This output will be detached from the graph and cloned before
+    being added to the return list of this function.
 
     Note, if these targets don't change during training, it would be more memory
-    efficient to store the weights theta* of the hypernetwork (which is a fixed
-    amount compared to the variable number of tasks). Though, it is more
-    computationally expensive to recompute h(c_j, theta*) for all j < task_id
-    everytime the target is needed.
+    efficient to store the weights :math:`\theta^*` of the hypernetwork (which
+    is a fixed amount of memory compared to the variable number of tasks).
+    Though, it is more computationally expensive to recompute
+    :math:`h(c_j, \theta^*)` for all :math:`j < \text{task\_id}` everytime the
+    target is needed.
 
-    Note, this function sets the hypernet temporarily in eval mode.
+    Note, this function sets the hypernet temporarily in eval mode. No gradients
+    are computed.
 
     Args:
         task_id: The ID of the current task.
         hnet: An instance of the hypernetwork before learning a new task
-            (i.e., the hypernetwork has the weights theta* necessary to
-            compute the targets).
+            (i.e., the hypernetwork has the weights :math:`\theta^*` necessary
+            to compute the targets).
 
     Returns:
-        An empty list, if task_id == 0. Otherwise, a list of task_id-1 targets.
-        These targets can be passed to the method "calc_fix_target_reg" while
-        training on the new task.
+        An empty list, if `task_id` is 0. Otherwise, a list of `task_id`-1
+        targets. These targets can be passed to the method
+        :func:`calc_fix_target_reg` while training on the new task.
     """
     # We temporarily switch to eval mode for target computation (e.g., to get
     # rid of training stochasticities such as dropout).
@@ -59,30 +61,36 @@ def get_current_targets(task_id, hnet):
     hnet.eval()
 
     ret = []
-    
-    for j in range(task_id):
-        W = hnet.forward(task_id=j)
-        ret.append([d.detach().clone() for d in W])
+
+    with torch.no_grad():
+        for j in range(task_id):
+            W = hnet.forward(task_id=j)
+            ret.append([d.detach().clone() for d in W])
 
     hnet.train(mode=hnet_mode)
 
     return ret
 
 def calc_jac_reguarizer(hnet, task_id, dTheta, device):
-    """Compute the CL regularzier, which is a sum over all previous task
+    r"""Compute the CL regularzier, which is a sum over all previous task
     ID's, that enforces that the norm of the matrix product of hypernet
     Jacobian and dTheta is small.
 
-    I.e., for all j < task_id minimize the following norm:
-        || J_h(c_j, theta) dTheta ||^2
-    where theta (and dTheta) is assumed to be vectorized.
+    I.e., for all :math:`j < \text{task\_id}` minimize the following norm:
+
+    .. math::
+        \lVert J_h(c_j, \theta) \Delta \theta \rVert^2
+
+    where :math:`\theta` (and :math:`\Delta\theta`) is assumed to be vectorized.
 
     This regularizer origins in a first-order Taylor approximation of the
     regularizer:
-        || h(c_j, theta) - h(c_j, theta + dTheta) ||^2
+
+    .. math::
+        \lVert h(c_j, \theta) - h(c_j, \theta + \Delta\theta) \rVert^2
 
     Args:
-        See parameters of method "calc_fix_target_reg".
+        (....): See docstring of method :func:`calc_fix_target_reg`.
         device: Current PyTorch device.
 
     Returns:
@@ -108,6 +116,10 @@ def calc_jac_reguarizer(hnet, task_id, dTheta, device):
         # individual outputs of the hypernet.
         for wind, w in enumerate(W):
             tmp = 0
+            # FIXME `torch.autograd.grad` can also take a list of tensors as
+            # input (and returns a corresponding tuple). Thus, this second for
+            # loop is unneccessary. It should be much more efficient to get rid
+            # of it (`grad` may also reuse gradients in this case).
             for tind, t in enumerate(hnet.theta):
                 partial = torch.autograd.grad(w, t, grad_outputs=None,
                     retain_graph=True, create_graph=True,
@@ -130,12 +142,14 @@ def calc_jac_reguarizer(hnet, task_id, dTheta, device):
     return reg / task_id
 
 def calc_value_preserving_reg(hnet, task_id, dTheta):
-    """This regularizer simply restricts a change in output-mapping for
+    r"""This regularizer simply restricts a change in output-mapping for
     previous task embeddings. I.e., for all j < task_id minimize:
-        || h(c_j, theta) - h(c_j, theta + dTheta) ||^2
+
+    .. math::
+        \lVert h(c_j, \theta) - h(c_j, \theta + \Delta\theta) \rVert^2
 
     Args:
-        See parameters of method "calc_fix_target_reg".
+        (....): See docstring of method :func:`calc_fix_target_reg`.
 
     Returns:
         The value of the regularizer.
@@ -157,12 +171,15 @@ def calc_value_preserving_reg(hnet, task_id, dTheta):
 def calc_fix_target_reg(hnet, task_id, targets=None, dTheta=None, dTembs=None,
                         mnet=None, inds_of_out_heads=None,
                         fisher_estimates=None, prev_theta=None,
-                        prev_task_embs=None, batch_size=None):
-    """This regularizer simply restricts the output-mapping for
-    previous task embeddings. I.e., for all j < task_id minimize:
-        || target_j - h(c_j, theta + dTheta) ||^2
-    where c_j is the current task embedding for task j (and we assumed that
-    "dTheta" was passed).
+                        prev_task_embs=None, batch_size=None, reg_scaling=None):
+    r"""This regularizer simply restricts the output-mapping for previous
+    task embeddings. I.e., for all :math:`j < \text{task\_id}` minimize:
+
+    .. math::
+        \lVert \text{target}_j - h(c_j, \theta + \Delta\theta) \rVert^2
+
+    where :math:`c_j` is the current task embedding for task :math:`j` (and we
+    assumed that `dTheta` was passed).
 
     Args:
         hnet: The hypernetwork whose output should be regularized. Has to
@@ -184,11 +201,11 @@ def calc_fix_target_reg(hnet, task_id, targets=None, dTheta=None, dTembs=None,
         dTembs (optional): The current direction of weight change for the task
             embeddings of all tasks been learned already.
             See dTheta for details.
-        mnet: Instance of the main network. Has to be given if "allowed_outputs"
-            are specified.
+        mnet: Instance of the main network. Has to be given if
+            `inds_of_out_heads` are specified.
         inds_of_out_heads: (optional): List of lists of integers, denoting which
             output neurons of the fully-connected output layer of the main
-            network belong to the output head of all already learned task ids.
+            network are used for predictions of the corresponding previous task.
             This will ensure that only weights of output neurons involved in
             solving a task are regularized.
             Note, this may only be used for main networks that have a fully-
@@ -196,18 +213,18 @@ def calc_fix_target_reg(hnet, task_id, targets=None, dTheta=None, dTembs=None,
         fisher_estimates (optional): A list of list of tensors, containing
             estimates of the Fisher Information matrix for each weight
             tensor in the main network and each task.
-                len(fisher_estimates) == task_id
+            Note, that :code:`len(fisher_estimates) == task_id`.
             The Fisher estimates are used as importance weights for single
             weights when computing the regularizer.
-        prev_theta (optional): If given, "prev_task_embs" but not "targets"
-            has to be specified. "prev_theta" is expected to be the internal
+        prev_theta (optional): If given, `prev_task_embs` but not `targets`
+            has to be specified. `prev_theta` is expected to be the internal
             weights theta prior to learning the current task. Hence, it can be
             used to compute the targets on the fly (which is more memory
             efficient (constant memory), but more computationally demanding).
             The computed targets will be detached from the computational graph.
             Independent of the current hypernet mode, the targets are computed
             in "eval" mode.
-        prev_task_embs (optional): If given, "prev_theta" but not "targets"
+        prev_task_embs (optional): If given, `prev_theta` but not `targets`
             has to be specified. "prev_task_embs" are the task embeddings 
             learned prior to learning the current task. It is sufficient to
             only pass the task embeddings for tasks with ID smaller than the
@@ -216,20 +233,22 @@ def calc_fix_target_reg(hnet, task_id, targets=None, dTheta=None, dTembs=None,
         batch_size (optional): If specified, only a random subset of previous
             task mappings is regularized. If the given number is bigger than the
             number of previous tasks, all previous tasks are regularized.
-
+        reg_scaling (optional): If specified, the regulariation terms for the 
+            different tasks are scaled arcording to the entries of this list.
     Returns:
         The value of the regularizer.
     """
     assert(isinstance(hnet, CLHyperNetInterface))
     assert(task_id > 0)
     assert(hnet.has_theta) # We need parameters to be regularized.
-    assert(len(targets) == task_id)
+    assert(targets is None or len(targets) == task_id)
     assert(inds_of_out_heads is None or mnet is not None)
     assert(inds_of_out_heads is None or len(inds_of_out_heads) >= task_id)
     assert(targets is None or (prev_theta is None and prev_task_embs is None))
     assert(prev_theta is None or prev_task_embs is not None)
     assert(prev_task_embs is None or len(prev_task_embs) >= task_id)
     assert(dTembs is None or len(dTembs) >= task_id)
+    assert(reg_scaling is None or len(reg_scaling) >= task_id)
 
     # Number of tasks to be regularized.
     num_regs = task_id
@@ -257,7 +276,9 @@ def calc_fix_target_reg(hnet, task_id, targets=None, dTheta=None, dTembs=None,
             hnet.eval()
 
             # Compute target on the fly using previous hnet.
-            target = hnet.forward(theta=prev_theta, task_emb=prev_task_embs[i])
+            with torch.no_grad():
+                target = hnet.forward(theta=prev_theta,
+                                      task_emb=prev_task_embs[i])
             target = [d.detach().clone() for d in target]
 
             hnet.train(mode=hnet_mode)
@@ -279,9 +300,14 @@ def calc_fix_target_reg(hnet, task_id, targets=None, dTheta=None, dTembs=None,
             _assert_shape_equality(weights_predicted, fisher_estimates[i])
             FI = torch.cat([w.view(-1) for w in fisher_estimates[i]])
 
-            reg += (FI * (W_target - W_predicted).pow(2)).sum()
+            reg_i = (FI * (W_target - W_predicted).pow(2)).sum()
         else:
-            reg += (W_target - W_predicted).pow(2).sum()
+            reg_i = (W_target - W_predicted).pow(2).sum()
+
+        if reg_scaling is not None:
+            reg += reg_scaling[i] * reg_i
+        else:
+            reg += reg_i
 
     return reg / num_regs
 
@@ -310,7 +336,14 @@ def flatten_and_remove_out_heads(mnet, weights, allowed_outputs):
         The flattened weights with those output weights not belonging to the
         current head being removed.
     """
+    # FIXME the option `mask_fc_out` did not exist in a previous version of the
+    # main network interface, which is why we need to ensure downwards
+    # compatibility.
+    # Previously, it was assumed sufficient for masking if `has_fc_out` was set
+    # to True.
     assert(mnet.has_fc_out)
+    assert(not hasattr(mnet, 'mask_fc_out') or \
+           (mnet.has_fc_out and mnet.mask_fc_out))
 
     obias_ind = len(weights)-1 if mnet.has_bias else -1
     oweights_ind = len(weights)-2 if mnet.has_bias else len(weights)-1

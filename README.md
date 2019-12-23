@@ -1,4 +1,4 @@
-# Continual Learning via Hypernetworks
+# Continual Learning with Hypernetworks
 
 A continual learning approach that has the flexibility to learn a dedicated set of parameters, fine-tuned for every task, that doesn't require an increase in the number of trainable weights and is robust against catastrophic forgetting.
 
@@ -12,18 +12,35 @@ Some toy regression problems can be explored in the folder [toy_example](toy_exa
 $ python3 -m toy_example.train --no_cuda
 ```
 
-## Classification Problems
+## MNIST Experiments
 
-Classical to challenging classification benchmarks are in the folder [classifier](classifier). Please refer to the corresponding [documentation](classifier/README.md).
+You can find instructions on how to reproduce our MNIST experiments and on how to use the corresponding code in the subfolder [mnist](mnist).
+
+## CIFAR Experiments
+
+Please checkout the subfolder [cifar](cifar). You may use the script [cifar.train_zenke](cifar/train_zenke.py) to run experiments using the same network as [Zenke et al.](https://arxiv.org/abs/1703.04200) and the script [cifar.train_resnet](cifar/train_resnet.py) to run experiments with a [Resnet-32](https://arxiv.org/abs/1512.03385).
+
+## Testing
+
+All testing of implemented functionality is located in the subfolder [tests](tests) and documented [here](tests/README.md). To run all unit tests, execute:
+
+```console
+$ python3 -m unittest discover -s tests/ -t .
+```
+
+## Documentation
+
+Please refer to the [README](docs/README.md) in the subfolder [docs](docs) for instructions on how to compile and open the documentation.
 
 ## Citation
 Please cite our paper if you use this code in your research project.
 
 ```
-@article{oshg2019hypercl,
-  title={Continual learning with hypernetworks},
-  author={von Oswald, Johannes and Henning, Christian and Sacramento, Jo{\~a}o and Grewe, Benjamin F},
-  journal={arXiv preprint arXiv:1906.00695},
-  year={2019}
+@inproceedings{oshg2019hypercl,
+title={Continual learning with hypernetworks},
+author={Johannes von Oswald and Christian Henning and Jo{\~a}o Sacramento and Benjamin F. Grewe},
+booktitle={International Conference on Learning Representations},
+year={2020},
+url={https://openreview.net/forum?id=SJgwNerKvB}
 }
 ```

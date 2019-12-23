@@ -24,8 +24,11 @@ A collection of helper functions.
 """
 
 import matplotlib
+import matplotlib.pyplot as plt
 import math
 from torch import nn
+import torch
+from warnings import warn
 
 def init_params(weights, bias=None):
     """Initialize the weights and biases of a linear or (transpose) conv layer.
@@ -33,13 +36,21 @@ def init_params(weights, bias=None):
     Note, the implementation is based on the method "reset_parameters()",
     that defines the original PyTorch initialization for a linear or
     convolutional layer, resp. The implementations can be found here:
+
         https://git.io/fhnxV
+
         https://git.io/fhnx2
+
+    .. deprecated:: 1.0
+        Please use function :func:`utils.torch_utils.init_params` instead.
 
     Args:
         weights: The weight tensor to be initialized.
         bias (optional): The bias tensor to be initialized.
     """
+    warn('Function is deprecated. Use "utils.torch_utils.init_params" instead.',
+         DeprecationWarning)
+
     nn.init.kaiming_uniform_(weights, a=math.sqrt(5))
     if bias is not None:
         fan_in, _ = nn.init._calculate_fan_in_and_fan_out(weights)
@@ -82,6 +93,29 @@ def list_to_str(list_arg, delim=' '):
             ret += delim
         ret += str(e)
     return ret
+
+def str_to_act(act_str):
+    """Convert the name of an activation function into the actual PyTorch
+    activation function.
+
+    Args:
+        act_str: Name of activation function (as defined by command-line
+            arguments).
+
+    Returns:
+        Torch activation function instance or ``None``, if ``linear`` is given.
+    """
+    if act_str == 'linear':
+        act = None
+    elif act_str == 'sigmoid':
+        act = torch.nn.Sigmoid()
+    elif act_str == 'relu':
+        act = torch.nn.ReLU()
+    elif act_str == 'elu':
+        act = torch.nn.ELU()
+    else:
+        raise Exception('Activation function %s unknown.' % act_str)
+    return act
 
 def configure_matplotlib_params(fig_size = [6.4, 4.8], two_axes=True,
                                 font_size=8):
@@ -158,6 +192,26 @@ def get_colorbrewer2_colors(family = 'Set2'):
             '#ffffcc',
             '#e5d8bd'
         ]
+
+def repair_canvas_and_show_fig(fig, close=True):
+    """If writing a figure to tensorboard via "add_figure" it might change the
+    canvas, such that our backend doesn't allow to show the figure anymore.
+    This method will generate a new canvas and replace the old one of the
+    given figure.
+
+    Args:
+        fig: The figure to be shown.
+        close: Whether the figure should be closed after it has been shown.
+    """
+    tmp_fig = plt.figure()
+    tmp_manager = tmp_fig.canvas.manager
+    tmp_manager.canvas.figure = fig
+    fig.set_canvas(tmp_manager.canvas)
+    plt.close(tmp_fig.number)
+    plt.figure(fig.number)
+    plt.show()
+    if close:
+        plt.close(fig.number)
 
 if __name__ == '__main__':
     pass

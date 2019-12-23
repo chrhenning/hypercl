@@ -12,26 +12,49 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+#
+# @title           :dataset.py
+# @author          :ch
+# @contact         :christian@ini.ethz.ch
+# @created         :08/06/2018
+# @version         :1.0
+# @python_version  :3.6.6
 """
-@title           :dataset.py
-@author          :ch
-@contact         :christian@ini.ethz.ch
-@created         :08/06/2018
-@version         :1.0
-@python_version  :3.6.6
+Dataset Interface
+-----------------
 
-Template for a dataset interface, that can be used to feed data into neural
-networks.
+The module :mod:`data.dataset` contains a template for a dataset interface,
+that can be used to feed data into neural networks.
 
 The implementation is based on an earlier implementation of a class I used in
 another project:
+
     https://git.io/fN1a6
 
 At the moment, the class holds all data in memory and is therefore not meant
-for bigger datasets. Though, it should be easy to write a wrapper for datasets
-not stored in memory.
-"""
+for bigger datasets. Though, it is easy to design wrappers that overcome this
+limitation (e.g., see abstract base class
+:class:`data.large_img_dataset.LargeImgDataset`).
 
+.. autosummary::
+
+    data.dataset.Dataset.get_test_inputs
+    data.dataset.Dataset.get_test_outputs
+    data.dataset.Dataset.get_train_inputs
+    data.dataset.Dataset.get_train_outputs
+    data.dataset.Dataset.get_val_inputs
+    data.dataset.Dataset.get_val_outputs
+    data.dataset.Dataset.input_to_torch_tensor
+    data.dataset.Dataset.is_image_dataset
+    data.dataset.Dataset.next_test_batch
+    data.dataset.Dataset.next_train_batch
+    data.dataset.Dataset.next_val_batch
+    data.dataset.Dataset.output_to_torch_tensor
+    data.dataset.Dataset.plot_samples
+    data.dataset.Dataset.reset_batch_generator
+    data.dataset.Dataset.tf_input_map
+    data.dataset.Dataset.tf_output_map
+"""
 from abc import ABC, abstractmethod
 import numpy as np
 from sklearn.preprocessing import OneHotEncoder
@@ -47,8 +70,8 @@ class Dataset(ABC):
     In order to write an interface for another dataset, you have to implement
     an inherited class. You must always call the constructor of this base class
     first when instantiating the implemented subclass.
-    
-    Note, the internals are stored in the private member _data, that is
+
+    Note, the internals are stored in the private member ``_data``, that is
     described in the constructor.
 
     Attributes:
@@ -60,35 +83,30 @@ class Dataset(ABC):
             decoded via the shape attributes of in- and outputs.
             Note, that all samples are internally zero-padded to the same
             length.
-        num_classes: The number of classes for a classification task (None
+        num_classes: The number of classes for a classification task (``None``
             otherwise).
         is_one_hot: Whether output labels are one-hot encoded for a
-            classification task (None otherwise).
+            classification task (``None`` otherwise).
         in_shape: The original shape of an input sample. Note, that samples are
             encoded by this class as individual vectors (e.g., an MNIST sample
             is ancoded as 784 dimensional vector, but its original shape is:
-            [28, 28, 1]).
+            ``[28, 28, 1]``).
             A sequential sample is encoded by concatenating all timeframes.
             Hence, the number of timesteps can be decoded by dividing a single 
             sample vector by np.prod(in_shape).
-        out_shape: The original shape of an output sample (see in_shape).
+        out_shape: The original shape of an output sample (see
+            :attr:`in_shape`).
         num_train_samples: The number of training samples.
         num_test_samples: The number of test samples.
         num_val_samples: The number of validation samples.
-        shuffle_test_samples: Whether the method 'next_test_batch' returns
-                              test samples in random order at every epoch.
-                              Defaults to True, i.e., samples have a random
-                              ordering every epoch.
-        shuffle_val_samples: Same as 'shuffle_test_samples' for samples from the
-                             validation set.
+        shuffle_test_samples: Whether the method :meth:`next_test_batch`
+            returns test samples in random order at every epoch. Defaults to
+            ``True``, i.e., samples have a random ordering every epoch.
+        shuffle_val_samples: Same as :attr:`shuffle_test_samples` for samples
+            from the validation set.
     """
 
     def __init__(self):
-        """Initialization of class attributes. The special (and private) data
-        dictionary is also defined here. It can be used to easily store the
-        processed dataset locally in a python readible format. This might speed
-        up the dataset loading on the next program run.
-        """
         # Internally, everything is stored in a certain structure, such that it
         # can easily be backuped (for instance via pickle).
         data = {}
@@ -143,77 +161,77 @@ class Dataset(ABC):
     # single label encoding.
     @property
     def classification(self):
-        """Getter for read-only attribute classification."""
+        """Getter for read-only attribute :attr:`classification`."""
         return self._data['classification']
 
     @property
     def sequence(self):
-        """Getter for read-only attribute sequence."""
+        """Getter for read-only attribute :attr:`sequence`."""
         return self._data['sequence']
 
     @property
     def num_classes(self):
-        """Getter for read-only attribute num_classes."""
+        """Getter for read-only attribute :attr:`num_classes`."""
         return self._data['num_classes']
 
     @property
     def is_one_hot(self):
-        """Getter for read-only attribute is_one_hot."""
+        """Getter for read-only attribute :attr:`is_one_hot`."""
         return self._data['is_one_hot']
 
     @property
     def in_shape(self):
-        """Getter for read-only attribute in_shape"""
+        """Getter for read-only attribute :attr:`in_shape`."""
         return self._data['in_shape']
 
     @property
     def out_shape(self):
-        """Getter for read-only attribute out_shape"""
+        """Getter for read-only attribute :attr:`out_shape`."""
         return self._data['out_shape']
 
     @property
     def num_train_samples(self):
-        """Getter for read-only attribute num_train_samples"""
+        """Getter for read-only attribute :attr:`num_train_samples`."""
         return np.size(self._data['train_inds'])
 
     @property
     def num_test_samples(self):
-        """Getter for read-only attribute num_test_samples"""
+        """Getter for read-only attribute :attr:`num_test_samples`."""
         return np.size(self._data['test_inds'])
 
     @property
     def num_val_samples(self):
-        """Getter for read-only attribute num_val_samples"""
+        """Getter for read-only attribute :attr:`num_val_samples`."""
         if self._data['val_inds'] is None:
             return 0
         return np.size(self._data['val_inds'])
 
     @property
     def shuffle_test_samples(self):
-        """Getter for read-only attribute shuffle_test_samples"""
+        """Getter for read-only attribute :attr:`shuffle_test_samples`."""
         return self._shuffle_test_samples
 
     @shuffle_test_samples.setter
     def shuffle_test_samples(self, value):
-        """Setter for the attribute shuffle_test_samples.
+        """Setter for the attribute :attr:`shuffle_test_samples`..
 
         Note, a call to this method will reset the current generator, such that
-        the next call to the method 'next_test_batch' results in starting a
-        sweep through a new epoch (full batch).
+        the next call to the method :meth:`next_test_batch` results in starting
+        a sweep through a new epoch (full batch).
         """
         self._shuffle_test_samples = value
         self._batch_gen_test = None
 
     @property
     def shuffle_val_samples(self):
-        """Getter for read-only attribute shuffle_val_samples"""
+        """Getter for read-only attribute :attr:`shuffle_val_samples`."""
         return self._shuffle_val_samples
 
     @shuffle_val_samples.setter
     def shuffle_val_samples(self, value):
-        """Setter for the attribute shuffle_val_samples.
+        """Setter for the attribute :attr:`shuffle_val_samples`.
 
-        See documentation of setter for attribute 'shuffle_test_samples'.
+        See documentation of setter for attribute :attr:`shuffle_test_samples`.
         """
         self._shuffle_val_samples = value
         self._batch_gen_val = None
@@ -222,10 +240,12 @@ class Dataset(ABC):
         """Get the inputs of all training samples.
         
         Note, that each sample is encoded as a single vector. One may use the
-        attribute "in_shape" to decode the actual shape of an input sample.
+        attribute :attr:`in_shape` to decode the actual shape of an input
+        sample.
         
         Returns:
-            A 2D numpy array, where each row encodes a training sample.
+            (numpy.ndarray): A 2D numpy array, where each row encodes a training
+            sample.
         """
         return self._data['in_data'][self._data['train_inds'], :]
 
@@ -235,17 +255,18 @@ class Dataset(ABC):
         See documentation of method "get_train_inputs" for details.
         
         Returns:
-            A 2D numpy array.
+            (numpy.ndarray): A 2D numpy array.
         """
         return self._data['in_data'][self._data['test_inds'], :]
 
     def get_val_inputs(self):
         """Get the inputs of all validation samples.
 
-        See documentation of method "get_train_inputs" for details.
+        See documentation of method :meth:`get_train_inputs` for details.
 
         Returns:
-            A 2D numpy array. Returns None if no validation set exists.
+            (numpy.ndarray): A 2D numpy array. Returns ``None`` if no validation
+            set exists.
         """
         if self._data['val_inds'] is None:
             return None
@@ -255,17 +276,19 @@ class Dataset(ABC):
         """Get the outputs (targets) of all training samples.
 
         Note, that each sample is encoded as a single vector. One may use the
-        attribute "out_shape" to decode the actual shape of an output sample.
-        Keep in mind, that classification samples might be one-hot encoded.
+        attribute :attr:`out_shape` to decode the actual shape of an output
+        sample. Keep in mind, that classification samples might be one-hot
+        encoded.
 
         Args:
-            use_one_hot: For classification samples, the encoding of the
+            use_one_hot (bool): For classification samples, the encoding of the
                 returned samples can be either "one-hot" or "class index". This
                 option is ignored for datasets other than classification sets.
-                If None, the dataset its default encoding is returned.
+                If ``None``, the dataset its default encoding is returned.
 
         Returns:
-            A 2D numpy array, where each row encodes a training target.
+            (numpy.ndarray): A 2D numpy array, where each row encodes a training
+            target.
         """
         out_data = self._data['out_data'][self._data['train_inds'], :]
         return self._get_outputs(out_data, use_one_hot)
@@ -273,13 +296,13 @@ class Dataset(ABC):
     def get_test_outputs(self, use_one_hot=None):
         """Get the outputs (targets) of all test samples.
 
-        See documentation of method "get_train_outputs" for details.
+        See documentation of method :meth:`get_train_outputs` for details.
 
         Args:
-            use_one_hot: See "get_train_outputs".
+            (....): See docstring of method :meth:`get_train_outputs`.
 
         Returns:
-            A 2D numpy array.
+            (numpy.ndarray): A 2D numpy array.
         """
         out_data = self._data['out_data'][self._data['test_inds'], :]
         return self._get_outputs(out_data, use_one_hot)
@@ -287,13 +310,14 @@ class Dataset(ABC):
     def get_val_outputs(self, use_one_hot=None):
         """Get the outputs (targets) of all validation samples.
 
-        See documentation of method "get_train_outputs" for details.
+        See documentation of method :meth:`get_train_outputs` for details.
 
         Args:
-            use_one_hot: See "get_train_outputs".
+            (....): See docstring of method :meth:`get_train_outputs`.
 
         Returns:
-            A 2D numpy array. Returns None if no validation set exists.
+            (numpy.ndarray): A 2D numpy array. Returns None if no validation set
+            exists.
         """
         if self._data['val_inds'] is None:
             return None
@@ -307,14 +331,16 @@ class Dataset(ABC):
         numpy random seed.
 
         Args:
-            batch_size: The size of the returned batch.
-            use_one_hot: See "get_train_outputs".
+            (....): See docstring of method :meth:`get_train_outputs`.
+            batch_size (int): The size of the returned batch.
 
         Returns:
-            [batch_inputs, batch_outputs] - A 2-element list, where each
-            element is a 2D numpy array.
-            batch_inputs: The inputs of the samples belonging to the batch.
-            batch_outputs: The outputs of the samples belonging to the batch.
+            (tuple): Tuple containing the following 2D numpy arrays:
+
+            - **batch_inputs**: The inputs of the samples belonging to the
+              batch.
+            - **batch_outputs**: The outputs of the samples belonging to the
+              batch.
         """
         if self._batch_gen_train is None:
             self.reset_batch_generator(train=True, test=False, val=False)
@@ -328,15 +354,16 @@ class Dataset(ABC):
     def next_test_batch(self, batch_size, use_one_hot=None):
         """Return the next random test batch.
 
-        See documentation of method "next_train_batch" for details.
+        See documentation of method :meth:`next_train_batch` for details.
 
         Args:
-            batch_size: The batch size.
-            use_one_hot: See "get_train_outputs".
+            (....): See docstring of method :meth:`next_train_batch`.
 
         Returns:
-            A 2-element list, where each element is a 2D numpy array,
-            comprising either sample inputs or outputs.
+            (tuple): Tuple containing the following 2D numpy arrays:
+
+            - **batch_inputs**
+            - **batch_outputs**
         """
         if self._batch_gen_test is None:
             self.reset_batch_generator(train=False, test=True, val=False)
@@ -350,16 +377,18 @@ class Dataset(ABC):
     def next_val_batch(self, batch_size, use_one_hot=None):
         """Return the next random validation batch.
 
-        See documentation of method "next_train_batch" for details.
+        See documentation of method :meth:`next_train_batch` for details.
 
         Args:
-            batch_size: The batch size.
-            use_one_hot: See "get_train_outputs".
+            (....): See docstring of method :meth:`next_train_batch`.
 
         Returns:
-            A 2-element list, where each element is a 2D numpy array,
-            comprising either sample inputs or outputs. Returns None if no
-            validation set exists.
+            (tuple): Tuple containing the following 2D numpy arrays:
+
+            - **batch_inputs**
+            - **batch_outputs**
+
+            Returns ``None`` if no validation set exists.
         """
         if self._data['val_inds'] is None:
             return None
@@ -376,14 +405,16 @@ class Dataset(ABC):
     def reset_batch_generator(self, train=True, test=True, val=True):
         """The batch generation possesses a memory. Hence, the samples returned
         depend on how many samples already have been retrieved via the next-
-        batch functions (e.g., "next_train_batch"). This method can be used to
-        reset these generators.
+        batch functions (e.g., :meth:`next_train_batch`). This method can be
+        used to reset these generators.
 
         Args:
-            train: If True, the generator for "next_train_batch" is reset.
-            test: If True, the generator for "next_test_batch" is reset.
-            val: If True, the generator for "next_val_batch" is reset, if a
-                validation set exists.
+            train (bool): If ``True``, the generator for
+                :meth:`next_train_batch` is reset.
+            test (bool): If ``True``, the generator for :meth:`next_test_batch`
+                is reset.
+            val (bool): If ``True``, the generator for :meth:`next_val_batch`
+                is reset, if a validation set exists.
         """
         if train:
             self._batch_gen_train = \
@@ -401,7 +432,11 @@ class Dataset(ABC):
 
     @abstractmethod
     def get_identifier(self):
-        """Returns the name of the dataset."""
+        """Returns the name of the dataset.
+
+        Returns:
+            (str): The dataset its (unique) identifier.
+        """
         pass
 
     def is_image_dataset(self):
@@ -409,9 +444,12 @@ class Dataset(ABC):
         
         Note, for sequence datasets, this method just returns whether a single
         frame encodes an image.
-        
+
         Returns:
-            A tuple (input_is_img, output_is_img) of booleans.
+            (tuple): Tuple containing two booleans:
+
+            - **input_is_img**
+            - **output_is_img**
         """
         # Note, if these comparisons do not hold, the method has to be
         # overwritten.
@@ -422,8 +460,8 @@ class Dataset(ABC):
 
     def tf_input_map(self, mode='inference'):
         """This method should be used by the map function of the Tensorflow
-        Dataset interface (tf.data.Dataset.map). In the default case, this is
-        just an identity map, as the data is already in memory.
+        Dataset interface (``tf.data.Dataset.map``). In the default case, this
+        is just an identity map, as the data is already in memory.
 
         There might be cases, in which the full dataset is too large for the
         working memory, and therefore the data currently needed by Tensorflow
@@ -431,21 +469,28 @@ class Dataset(ABC):
         interface for this process.
 
         Args:
-            mode: This is the same as the mode attribute in the class
-                  NetworkBase, that can be used to distinguish between training
-                  and inference (e.g., if special input processing should be
-                  used during training).
+            mode (str): Is the data needed for training or inference? This
+                distinction is important, as it might change the way the data is
+                processed (e.g., special random data augmentation might apply
+                during training but not during inference. The parameter is a
+                string with the valid values being ``train`` and ``inference``.
 
         Returns:
-            A function handle, that maps the given input tensor to the
-            preprocessed input tensor.
+            (function): A function handle, that maps the given input tensor to
+            the preprocessed input tensor.
         """
         return lambda x : x
 
     def tf_output_map(self, mode='inference'):
-        """Similar to method 'tf_input_map', just for dataset outputs.
+        """Similar to method :meth:`tf_input_map`, just for dataset outputs.
 
         Note, in this default implementation, it is also just an identity map.
+        
+        Args:
+            (....): See docstring of method :meth:`tf_input_map`.
+
+        Returns:
+            (function): A function handle.
         """
         return lambda x : x
 
@@ -458,20 +503,20 @@ class Dataset(ABC):
         augmentation.
 
         Args:
-            x: A 2D numpy array, containing inputs as provided by this dataset.
-            device: The PyTorch device onto which the input should be mapped.
-            mode: This is the same as the mode attribute in the class
-                  NetworkBase, that can be used to distinguish between training
-                  and inference (e.g., if special input processing should be
-                  used during training).
-                  Valid values are: 'train' and 'inference'.
-            force_no_preprocessing: In case preprocessing is applied to the
-                inputs (e.g., normalization or random flips/crops), this option
-                can be used to prohibit any kind of manipulation. Hence, the
-                inputs are transformed into PyTorch tensors on an "as is" basis.
+            x (numpy.ndarray): A 2D numpy array, containing inputs as provided
+                by this dataset.
+            device (torch.device or int): The PyTorch device onto which the
+                input should be mapped.
+            mode (str): See docstring of method :meth:`tf_input_map`.
+                  Valid values are: ``train`` and ``inference``.
+            force_no_preprocessing (bool): In case preprocessing is applied to
+                the inputs (e.g., normalization or random flips/crops), this
+                option can be used to prohibit any kind of manipulation. Hence,
+                the inputs are transformed into PyTorch tensors on an "as is"
+                basis.
 
         Returns:
-            The given input x as PyTorch tensor.
+            (torch.Tensor): The given input ``x`` as PyTorch tensor.
         """
         # Note, this import is only needed for the functions:
         # input_to_torch_tensor() and output_to_torch_tensor()
@@ -480,10 +525,17 @@ class Dataset(ABC):
 
     def output_to_torch_tensor(self, y, device, mode='inference',
                                force_no_preprocessing=False):
-        """Similar to method 'input_to_torch_tensor', just for dataset outputs.
+        """Similar to method :meth:`input_to_torch_tensor`, just for dataset
+        outputs.
 
         Note, in this default implementation, it is also does not perform any
         data preprocessing.
+
+        Args:
+            (....): See docstring of method :meth:`input_to_torch_tensor`.
+
+        Returns:
+            (torch.Tensor): The given output ``y`` as PyTorch tensor.
         """
         from  torch import from_numpy
         return from_numpy(y).float().to(device)
@@ -493,19 +545,21 @@ class Dataset(ABC):
                      interactive=False, figsize=(10, 6)):
         """Plot samples belonging to this dataset. Each sample will be plotted
         in its own subplot.
-        
+
         Args:
-            title: The title of the whole figure.
-            inputs: A 2D numpy array, where each row is an input sample.
-            outputs (optional): A 2D numpy array of actual dataset targets.
-            predictions (optional): A 2D numpy array of predicted output
-                samples (i.e., output predicted by a neural network).
-            num_samples_per_row (default: 4): Maximum number of samples plotted
+            title (str): The title of the whole figure.
+            inputs (numpy.ndarray): A 2D numpy array, where each row is an input
+                sample.
+            outputs (numpy.ndarray, optional): A 2D numpy array of actual
+                dataset targets.
+            predictions (numpy.ndarray, optional): A 2D numpy array of predicted
+                output samples (i.e., output predicted by a neural network).
+            num_samples_per_row (int): Maximum number of samples plotted
                 per row in the generated figure.
-            show (default: True): Whether the plot should be shown.
-            filename (optional): If provided, the figure will be stored under
-                this filename.
-            interactive (default: False): Turn on interactive mode. We mainly
+            show (bool): Whether the plot should be shown.
+            filename (str, optional): If provided, the figure will be stored
+                under this filename.
+            interactive (bool): Turn on interactive mode. We mainly
                 use this option to ensure that the program will run in
                 background while figure is displayed. The figure will be
                 displayed until another one is displayed, the user closes it or
@@ -513,7 +567,7 @@ class Dataset(ABC):
                 program will freeze until the user closes the figure.
                 Note, if using the iPython inline backend, this option has no
                 effect.
-            figsize (default: (10, 6)): A tuple, determining the size of the
+            figsize (tuple): A tuple, determining the size of the
                 figure in inches.
         """
         # Determine the configs for the grid of this figure.
@@ -575,10 +629,10 @@ class Dataset(ABC):
                      outputs=None, predictions=None):
         """Add a custom sample plot to the given Axes object.
 
-        Note, this method is called by the "plot_samples" method.
+        Note, this method is called by the :meth:`plot_samples` method.
 
         Note, that the number of inner subplots is configured via the method:
-            _plot_config
+        :meth:`_plot_config`.
 
         Args:
             fig: An instance of class matplotlib.figure.Figure, that will
@@ -603,18 +657,18 @@ class Dataset(ABC):
         pass
 
     def _plot_config(self, inputs, outputs=None, predictions=None):
-        """Defines properties, used by the method 'plot_samples'.
+        """Defines properties, used by the method :meth:`plot_samples`.
 
         This method can be overwritten, if these configs need to be different
         for a certain dataset.
 
         Args:
-            The given arguments, are the same as the same-named arguments of
-            the method 'plot_samples'. They might be used by subclass
+            The given arguments are the same as the same-named arguments of
+            the method :meth:`plot_samples`. They might be used by subclass
             implementations to determine the configs.
 
         Returns:
-            A dictionary with the plot configs.
+            (dict): A dictionary with the plot configs.
         """
         plot_configs = dict()
         plot_configs['outer_wspace'] = 0.4
@@ -636,7 +690,7 @@ class Dataset(ABC):
             use_one_hot: How data should be encoded.
 
         Returns:
-            See documentation of method "get_train_outputs".
+            See documentation of method :meth:`get_train_outputs`.
         """
         if self.classification:
             if use_one_hot is None:

@@ -49,7 +49,7 @@ Example results with these tasks in a continual learning setting with our approa
 $ python3 train.py --no_cuda --beta=0.005 --emb_size=2 --n_iter=4001 --lr_hyper=1e-2 --data_random_seed=42
 ```
 
-The final MSE values should correspond to `0.00419, 0.00239, 0.00607`. Note, this setting would correspond to CL scenario *CL1* (see [paper](https://arxiv.org/abs/1906.00695)).
+The final MSE values should correspond to `0.00419, 0.00239, 0.00607`. Note, this setting would correspond to CL scenario **CL1** (see [paper](https://arxiv.org/abs/1906.00695)).
 
 ##### Fine-tuning
 

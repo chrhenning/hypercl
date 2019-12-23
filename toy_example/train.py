@@ -20,10 +20,9 @@
 @version         :1.0
 @python_version  :3.6.6
 
-Train a toy regression task using two auxiliarry networks. One (the Hypernet)
-will be generating the weights for the main network. The other (the
-Discriminator) is going to decide whether the main network generated meaningful
-weights.
+Train a hypernet-main network combination on simple (illustrative) regression
+tasks (e.g., 1D polynomials). Each training consists of several tasks that are
+presented sequentially (i.e., we are considering a continual learning setup).
 """
 # Do not delete the following import for all executable scripts!
 import __init__ # pylint: disable=unused-import
@@ -51,9 +50,9 @@ def test(data_handlers, mnet, hnet, device, config, writer, rnet=None, \
     """Test the performance of all tasks.
 
     Args:
-        See docstring of method train_reg. Note, "hnet" can be passed as None.
-        In this case, no weights are passed to the "forward" method of the main
-        network.
+        (....): See docstring of method :func:`train_reg`. Note, `hnet` can be
+            passed as None. In this case, no weights are passed to the `forward`
+            method of the main network.
         data_handlers: A list of data handlers, each representing a task.
         rnet (optional): The task recognition network. If given, the of each
             sample will be inferred via this network.
@@ -74,11 +73,13 @@ def test(data_handlers, mnet, hnet, device, config, writer, rnet=None, \
         save_fig: Whether the figures should be saved in the output folder.
 
     Returns:
-        mse: The current MSE values.
-        immediate_mse: The given "immediate_mse", potentially modified by
-            replacing missing values with current ones.
-        immediate_weights: The given "immediate_weights", potentially modified
-            by replacing missing values with current ones.
+        (tuple): Tuple containing:
+
+        - **mse**: The current MSE values.
+        - **immediate_mse**: The given "immediate_mse", potentially modified by
+          replacing missing values with current ones.
+        - **immediate_weights**: The given "immediate_weights", potentially
+          modified by replacing missing values with current ones.
     """
     assert(hnet is not None or immediate_weights is None)
     # Recognition model only makes sense if a hypernetwork is used.
@@ -153,8 +154,8 @@ def test(data_handlers, mnet, hnet, device, config, writer, rnet=None, \
 
             if immediate_weights is not None:
                 W_curr = torch.cat([d.clone().view(-1) for d in weights])
-                if type(immediate_weights[i]) == float and \
-                        immediate_weights[i] == -1:
+                if type(immediate_weights[i]) == int:
+                    assert(immediate_weights[i] == -1)
                     immediate_weights[i] = W_curr
                 else:
                     W_immediate = immediate_weights[i]
@@ -166,7 +167,8 @@ def test(data_handlers, mnet, hnet, device, config, writer, rnet=None, \
     if save_fig:
         fig_fn = os.path.join(config.out_dir, '%d_tasks_plot' % n)
     data_handlers[0].plot_datasets(data_handlers, inputs, predictions,
-                                   filename=fig_fn, figsize=None)
+                                   filename=fig_fn, figsize=None,
+                                   show=not config.no_plots)
 
     plt.figure()
     plt.title('Current MSE on each task.')
@@ -184,7 +186,9 @@ def test(data_handlers, mnet, hnet, device, config, writer, rnet=None, \
     if save_fig:
         plt.savefig(os.path.join(config.out_dir, '%d_tasks_mse' % n),
                     bbox_inches='tight')
-    plt.show()
+
+    if not config.no_plots:
+        plt.show()
 
     print('Mean task MSE: %f (std: %d)' % (mse.mean(), mse.std()))
 
@@ -212,9 +216,9 @@ def evaluate(task_id, data, mnet, hnet, device, config, writer,
     Note, if no validation set is available, the test set will be used instead.
 
     Args:
-        See docstring of method train_reg. Note, "hnet" can be passed as None.
-        In this case, no weights are passed to the "forward" method of the main
-        network.
+        (....): See docstring of method :func:`train_reg`. Note, `hnet` can be
+            passed as None. In this case, no weights are passed to the `forward`
+            method of the main network.
         train_iter: The current training iteration.
     """
     if train_iter is None:
@@ -256,7 +260,8 @@ def evaluate(task_id, data, mnet, hnet, device, config, writer,
         #data.plot_samples('Evaluation at train iter %d' % train_iter,
         #                  X.data.cpu().numpy(), outputs=T.data.cpu().numpy(),
         #                  predictions=Y.data.cpu().numpy())
-        data.plot_predictions([X.data.cpu().numpy(), Y.data.cpu().numpy()])
+        if not config.no_plots:
+            data.plot_predictions([X.data.cpu().numpy(), Y.data.cpu().numpy()])
 
 def evaluate_rnet(task_id, data, rnet, device, config, writer, train_iter):
     """Evaluate the performance of the recognition model during training on a
@@ -265,7 +270,7 @@ def evaluate_rnet(task_id, data, rnet, device, config, writer, train_iter):
     Note, if no validation set is available, the test set will be used instead.
 
     Args:
-        See docstring of method train_reg.
+        (....): See docstring of method :func:`train_reg`.
         rnet: The recognition model.
         train_iter: The current training iteration.
     """
@@ -307,7 +312,7 @@ def calc_reg_masks(data_handlers, mnet, device, config):
     task.
 
     Args:
-        See docstring of method train_reg.
+        (....): See docstring of method :func:`train_reg`.
         data_handlers: A list of all data_handlers, one for each task.
 
     Returns:
@@ -332,10 +337,11 @@ def calc_reg_masks(data_handlers, mnet, device, config):
     return masks
 
 def train_reg(task_id, data, mnet, hnet, device, config, writer):
-    """Train the network using the task-specific loss plus a regularizer that
+    r"""Train the network using the task-specific loss plus a regularizer that
     should weaken catastrophic forgetting.
 
-    loss = task_loss + beta * regularizer.
+    .. math::
+        \text{loss} = \text{task\_loss} + \beta * \text{regularizer}
 
     Args:
         task_id: The index of the task on which we train.
@@ -357,7 +363,7 @@ def train_reg(task_id, data, mnet, hnet, device, config, writer):
         out_head_inds = [list(range(i*n_y, (i+1)*n_y)) for i in
                          range(task_id+1)]
         # Outputs to be regularized.
-        regged_outputs = out_head_inds if config.masked_reg else None
+        regged_outputs = out_head_inds[:-1] if config.masked_reg else None
     allowed_outputs = out_head_inds[task_id] if config.multi_head else None
 
     # Collect Fisher estimates for the reg computation.
@@ -373,7 +379,7 @@ def train_reg(task_id, data, mnet, hnet, device, config, writer):
             fisher_ests.append(ff)
 
     # Regularizer targets.
-    if config.reg == 0:
+    if config.reg == 0 and config.beta > 0:
         targets = hreg.get_current_targets(task_id, hnet)
 
     regularized_params = list(hnet.theta)
@@ -529,17 +535,21 @@ def train_reg(task_id, data, mnet, hnet, device, config, writer):
     print('Training network ... Done')
 
 def train_proximal(task_id, data, mnet, hnet, device, config, writer):
-    """Train the hypernetwork via a proximal algorithm. Hence, we don't optimize
+    r"""Train the hypernetwork via a proximal algorithm. Hence, we don't optimize
     the weights of the hypernetwork directly (except for the task embeddings).
     Instead, we optimize the following loss for dTheta. After a few optimization
     steps, dTheta will be added to the current set of weights in the
     hypernetwork.
 
-    loss = task_loss(theta + dTheta) + alpha ||dTheta||^2 + beta * 
-           sum_{j < task_id} || h(c_j, theta) - h(c_j, theta + dTheta) ||^2.
+    .. math::
+        \text{loss} = \text{task\_loss}(\theta + \Delta\theta) +
+                      \alpha \lVert \Delta\theta \rVert^2 +
+                      \beta *  \sum_{j < \text{task\_id}} \lVert
+                          h(c_j, \theta) - h(c_j, \theta + \Delta\theta)
+                          \rVert^2
 
     Args:
-        See docstring of method train_reg.
+        (....): See docstring of method :func:`train_reg`.
     """
     if config.reg == 3 or config.ewc_weight_importance:
         # TODO Don't just copy all the code, find a more elegant solution.
@@ -561,7 +571,7 @@ def train_proximal(task_id, data, mnet, hnet, device, config, writer):
         out_head_inds = [list(range(i*n_y, (i+1)*n_y)) for i in
                          range(task_id+1)]
         # Outputs to be regularized.
-        regged_outputs = out_head_inds if config.masked_reg else None
+        regged_outputs = out_head_inds[:-1] if config.masked_reg else None
     allowed_outputs = out_head_inds[task_id] if config.multi_head else None
 
     # Regularizer targets.
@@ -695,7 +705,7 @@ def train_proximal(task_id, data, mnet, hnet, device, config, writer):
     print('Training network ... Done')
 
 def train_rnet(task_id, data, rnet, device, config, writer):
-    """Train the recognition network. This means, that the encoder should be
+    r"""Train the recognition network. This means, that the encoder should be
     able to detect the current task from input samples. Though, to avoid
     forgetting (i.e., the ability to recognize previous tasks), we also need to
     ensure that we have a generative model for samples from previous tasks. This
@@ -704,11 +714,15 @@ def train_rnet(task_id, data, rnet, device, config, writer):
     task. Hence, "we have data for all tasks at once" to train the full auto-
     encoder (task identification of all tasks inclusively).
 
-    loss = reconstruction loss + task identification loss + prior matching
-         = ||x - x_rec||^2 + beta_ce * cross_entropy + beta_pm * prior-matching
+    .. math::
+        \text{loss} & = \text{reconstruction loss} +
+                        \text{task identification loss} +
+                        \text{prior matching} \\
+            & = \lVert x - x_{rec} \rVert^2 + \text{beta\_ce} * 
+                \text{cross\_entropy} + \text{beta\_pm} * \text{prior-matching}
 
     Args:
-        See docstring of method train_reg.
+        (....): See docstring of method :func:`train_reg`.
         rnet: The recognition network.
     """
     print('Training recognition network ...')
@@ -798,10 +812,12 @@ def run():
     """Run the script
 
     Returns:
-        final_mse: Final MSE for each task.
-        immediate_mse: MSE achieved directly after training on each task.
-        (final_rnet_mse): Final MSE for each task, when using recognition
-            model to infer task identity during testing.
+        (tuple): Tuple containing:
+
+        - **final_mse**: Final MSE for each task.
+        - **immediate_mse**: MSE achieved directly after training on each task.
+        - **final_rnet_mse** (optional): Final MSE for each task, when using
+          recognition model to infer task identity during testing.
     """
     config = train_utils.parse_cmd_arguments(mode='train_regression')
 
@@ -816,7 +832,7 @@ def run():
 
     ### Train on tasks sequentially.
     immediate_mse = np.ones(num_tasks) * -1.
-    immediate_weights = np.ones(num_tasks) * -1.
+    immediate_weights = [-1] * num_tasks
     current_rnet_mse = None
 
     # DELETEME
@@ -867,7 +883,7 @@ def run():
             #baseline_mse=None if i != num_tasks-1 else baselines)
             )
 
-        if config.train_from_scratch:
+        if config.train_from_scratch and i < num_tasks-1:
             mnet, hnet, rnet = train_utils._generate_networks(config, dhandlers,
                 device, create_rnet=config.use_task_detection)
 

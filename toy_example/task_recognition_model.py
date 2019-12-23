@@ -177,14 +177,16 @@ class RecognitionNet(nn.Module):
                 internally.
 
         Returns:
-            alpha: The softmax output (task classification output).
-            nu_z: The parameters of the latent distribution from which "z" is
-                sampled (i.e., the actual output of the encoder besides alpha).
-                Note, that these parameters are the cooncatenated means and
-                log-variances of the latent distribution.
-            z: A latent space embedding retrieved via the reparametrization
-                trick.
-            (log_alpha): The log softmax activity of alpha.
+            (tuple): Tuple containing:
+
+            - **alpha**: The softmax output (task classification output).
+            - **nu_z**: The parameters of the latent distribution from which "z" is
+              sampled (i.e., the actual output of the encoder besides alpha).
+              Note, that these parameters are the cooncatenated means and
+              log-variances of the latent distribution.
+            - **z**: A latent space embedding retrieved via the
+              reparametrization trick.
+            - **log_alpha** (optional): The log softmax activity of alpha.
         """
         phi_e = None
         if encoder_weights is not None:
@@ -235,7 +237,7 @@ class RecognitionNet(nn.Module):
         """Obtain a batch of samples from the prior for the latent space z.
 
         Args:
-            batch_sizeze: Number of samples to acquire.
+            batch_size: Number of samples to acquire.
 
         Returns:
             A torch tensor of samples.

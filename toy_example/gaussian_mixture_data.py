@@ -41,6 +41,7 @@ import itertools
 import matplotlib.pyplot as plt
 from matplotlib.pyplot import cm
 from scipy.spatial import cKDTree
+from warnings import warn
 
 from data.dataset import Dataset
 
@@ -50,10 +51,25 @@ DEFAULT_MEANS = [np.array([i, j]) for i, j in
                  itertools.product(range(-4, 5, 2), range(-4, 5, 2))]
 DEFAULT_VARIANCES = [0.05**2 * np.eye(len(mean)) for mean in DEFAULT_MEANS]
 
-def get_gmm_taks(means=DEFAULT_MEANS, covs=DEFAULT_VARIANCES, num_train=100,
+### Here are a few other configurations used in papers.
+# https://arxiv.org/pdf/1611.02163.pdf
+METZ_ANGLES = [i/8 * 2 * np.pi for i in range(8)]
+METZ_MEANS = [np.array([2. * np.sin(a), 2. * np.cos(a)]) for a in METZ_ANGLES]
+METZ_VARIANCES = [0.02**2 * np.eye(len(mean)) for mean in METZ_MEANS]
+
+# https://arxiv.org/pdf/1612.02136.pdf
+CHE_ANGLES = [(i+0.5)/6 * 2 * np.pi for i in range(6)]
+CHE_MEANS = [np.array([5. * np.sin(a), 5. * np.cos(a)]) for a in CHE_ANGLES]
+CHE_VARIANCES = [0.1**2 * np.eye(len(mean)) for mean in CHE_MEANS]
+
+def get_gmm_tasks(means=DEFAULT_MEANS, covs=DEFAULT_VARIANCES, num_train=100,
                  num_test=100, map_functions=None, rseed=None):
     """Generate a set of data handlers (one for each task) of class
     "GaussianData".
+
+    .. deprecated:: 1.0
+        Please use function
+        :func:`data.special.gaussian_mixture_data.get_gmm_tasks` instead.
 
     Args:
         means: The mean of each Gaussian.
@@ -68,6 +84,10 @@ def get_gmm_taks(means=DEFAULT_MEANS, covs=DEFAULT_VARIANCES, num_train=100,
     Returns:
         A list of objects of class "GaussianData".
     """
+    warn('Please use function ' +
+         '"data.special.gaussian_mixture_data.get_gmm_tasks" instead.',
+         DeprecationWarning)
+
     assert(len(means) == len(covs))
 
     if map_functions is None:
@@ -89,7 +109,13 @@ class GaussianData(Dataset):
     Due to plotting functionalities, this class only supports 2D inputs and
     1D outputs.
 
+    .. deprecated:: 1.0
+        Please use class
+        :class:`data.special.gaussian_mixture_data.GaussianData` instead.
+
     Attributes: (additional to baseclass)
+        mean: Mean vector.
+        cov: Covariance matrix.
     """
     def __init__(self, mean=np.array([0, 0]), cov=0.05**2 * np.eye(2),
                  num_train=100, num_test=100, map_function=None, rseed=None):
@@ -112,6 +138,10 @@ class GaussianData(Dataset):
                 seed is generated.
         """
         super().__init__()
+
+        warn('Please use class ' +
+             '"data.special.gaussian_mixture_data.GaussianData" instead.',
+             DeprecationWarning)
 
         if rseed is None:
             rand = np.random
@@ -149,6 +179,16 @@ class GaussianData(Dataset):
         self._cov = cov
         self._map = map_function
 
+    @property
+    def mean(self):
+        """Getter for read-only attribute mean."""
+        return self._mean
+
+    @property
+    def cov(self):
+        """Getter for read-only attribute cov."""
+        return self._cov
+
     def get_identifier(self):
         """Returns the name of the dataset."""
         return 'GaussianInputData'
@@ -166,12 +206,12 @@ class GaussianData(Dataset):
             outputs (optional): A 2D numpy array of actual dataset targets.
             predictions (optional): A 2D numpy array of predicted output
                 samples (i.e., output predicted by a neural network).
-            num_samples_per_row (default: 4): Maximum number of samples plotted
+            num_samples_per_row: Maximum number of samples plotted
                 per row in the generated figure.
-            show (default: True): Whether the plot should be shown.
+            show: Whether the plot should be shown.
             filename (optional): If provided, the figure will be stored under
                 this filename.
-            interactive (default: False): Turn on interactive mode. We mainly
+            interactive: Turn on interactive mode. We mainly
                 use this option to ensure that the program will run in
                 background while figure is displayed. The figure will be
                 displayed until another one is displayed, the user closes it or
@@ -179,10 +219,10 @@ class GaussianData(Dataset):
                 program will freeze until the user closes the figure.
                 Note, if using the iPython inline backend, this option has no
                 effect.
-            figsize (default: (10, 6)): A tuple, determining the size of the
+            figsize: A tuple, determining the size of the
                 figure in inches.
         """
-        assert( outputs is not None or predictions is not None)
+        assert(outputs is not None or predictions is not None)
 
         plt.figure(figsize=figsize)
         plt.title(title, size=20)
@@ -221,6 +261,8 @@ class GaussianData(Dataset):
 
     def plot_dataset(self):
         """Plot the whole dataset."""
+        
+        fig, ax = plt.subplots()
         train_x = self.get_train_inputs()
         train_y = self.get_train_outputs().squeeze()
 
@@ -248,6 +290,8 @@ class GaussianData(Dataset):
         plt.xlabel('x1')
         plt.ylabel('x2')
         plt.show()
+
+        return fig
 
     def _get_function_vals(self, grid_size=100):
         """Get real function values for a grid of equidistant x values in a
@@ -329,10 +373,10 @@ class GaussianData(Dataset):
             predictions (optional): A list of numpy arrays containing the
                 predicted output values for the given input values.
             labels (optional): A label for each dataset.
-            show (default: True): Whether the plot should be shown.
+            show: Whether the plot should be shown.
             filename (optional): If provided, the figure will be stored under
                 this filename.
-            figsize (default: (10, 6)): A tuple, determining the size of the
+            figsize: A tuple, determining the size of the
                 figure in inches.
         """
         n = len(data_handlers)
@@ -342,7 +386,8 @@ class GaussianData(Dataset):
                (predictions is None or len(predictions) == n) and \
                (labels is None or len(labels) == n))
 
-        plt.figure(figsize=figsize)
+        fig, ax = plt.subplots(figsize=figsize)
+        #plt.figure(figsize=figsize)
         plt.title('GaussianMixture tasks', size=20)
 
         # We need to produce a heatmap that spans all tasks.
@@ -377,7 +422,7 @@ class GaussianData(Dataset):
         X = np.vstack([X1.ravel(), X2.ravel()]).T
 
         # Problem: Now that we have the underlying X mesh, how do we compute the
-        # heatmap. Siince every Gaussian has full support, we can't draw a
+        # heatmap. Since every Gaussian has full support, we can't draw a
         # heatmap that displays all tasks with their correct Y value.
         # One options would be to just add all heat maps. For small variances
         # this would look "almost" correct.
@@ -436,6 +481,8 @@ class GaussianData(Dataset):
 
         if show:
             plt.show()
+
+        return fig
 
 
 if __name__ == '__main__':

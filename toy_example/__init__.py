@@ -13,8 +13,9 @@ curr_dir = os.path.basename(os.path.abspath(os.curdir))
 # a subfolder, it is necessary to add the parent dir to the path.
 # Note, the user might rename the folder PACKAGE, which is why we can't rely on
 # it.
-if curr_dir == 'toy_example' and '..' not in sys.path:
-    sys.path.insert(0, '..')
+base_dir = os.path.abspath('..')
+if curr_dir == 'toy_example' and base_dir != sys.path[0]:
+    sys.path.insert(0, base_dir)
 
 # Initialize plotting environment.
 from utils import misc

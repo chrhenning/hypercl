@@ -12,21 +12,27 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+#
+# @title           :data/cub_200_2011_data.py
+# @author          :ch
+# @contact         :henningc@ethz.ch
+# @created         :05/17/2019
+# @version         :1.0
+# @python_version  :3.6.8
 """
-@title           :data/cub_200_2011_data.py
-@author          :ch
-@contact         :henningc@ethz.ch
-@created         :05/17/2019
-@version         :1.0
-@python_version  :3.6.8
+CUB-200-2011 Dataset
+--------------------
 
-This is a dataloader for the Caltech-UCSD Birds-200-2011 Dataset (CUB-200-2011).
+The module :mod:`data.cub_200_2011_data` contains a dataloader for the
+Caltech-UCSD Birds-200-2011 Dataset (CUB-200-2011).
 
-The dataset is available at
+The dataset is available at:
+
     http://www.vision.caltech.edu/visipedia/CUB-200-2011.html
 
 For more information on the dataset, please refer to the corresponding
 publication:
+
     Wah et al., "The Caltech-UCSD Birds-200-2011 Dataset",
     California Institute of Technology, 2011.
     http://www.vision.caltech.edu/visipedia/papers/CUB_200_2011.pdf
@@ -35,13 +41,17 @@ The dataset consists of 11,788 images divided into 200 categories. The dataset
 has a specified train/test split and a lot of additional information (bounding
 boxes, segmentation, parts annotation, ...) that we don't make use of yet.
 
-Note, this dataset should not be confused with the older version CUB-200,
-containing only 6,033 images.
+.. note::
+    This dataset should not be confused with the older version CUB-200,
+    containing only 6,033 images.
 
-Note, we use the same data augmentation as for class ILSVRC2012Data.
+.. note ::
+    We use the same data augmentation as for class
+    :class:`data.ilsvrc2012_data.ILSVRC2012Data`.
 
-Note, the original category labels range from 1-200. We modify them to range
-from 0 - 199.
+.. note::
+    The original category labels range from 1-200. We modify them to range
+    from 0 - 199.
 """
 # FIXME We currently rely too much on the internals of class ImageFolder.
 import torchvision
@@ -75,7 +85,32 @@ class CUB2002011(LargeImgDataset):
     The input data of the dataset will be strings to image files. The output
     data corresponds to object labels (bird categories).
 
-    Attributes: (additional to baseclass):
+    Note:
+        The dataset will be downloaded if not available.
+
+    Note:
+        The original category labels range from 1-200. We modify them to
+        range from 0 - 199.
+
+    Args:
+        data_path (str): Where should the dataset be read from? If not existing,
+            the dataset will be downloaded into this folder.
+        use_one_hot (bool): Whether the class labels should be represented in a
+            one-hot encoding.
+
+            .. note::
+                This option does not influence the internal PyTorch
+                Dataset classes (e.g., cmp.
+                :attr:`data.large_img_dataset.LargeImgDataset.torch_train`),
+                that can be used in conjunction with PyTorch data loaders.
+        num_val_per_class (int): The number of validation samples per class.
+            For instance: If value 10 is given, a validation set of size
+            5 * 200 = 1,000 is constructed (these samples will be removed
+            from the training set).
+
+            .. note::
+                Validation samples use the same data augmentation pipeline
+                as test samples.
     """
     _DOWNLOAD_PATH = 'http://www.vision.caltech.edu/visipedia-data/' + \
                      'CUB-200-2011/'
@@ -93,28 +128,6 @@ class CUB2002011(LargeImgDataset):
     _TRAIN_TEST_SPLIT_FILE = 'train_test_split.txt' # Realitve to _REL_BASE
 
     def __init__(self, data_path, use_one_hot=False, num_val_per_class=0):
-        """Read (and download) the CUB-200-2011 dataset.
-
-        Note, the dataset will be downloaded if not available.
-
-        Note, the original category labels range from 1-200. We modify them to
-        range from 0 - 199.
-
-        Args:
-            data_path: Where should the dataset be read from? If not existing,
-                the dataset will be downloaded into this folder.
-            use_one_hot (default: False): Whether the class labels should be
-                represented in a one-hot encoding.
-                Note, this option does not influence the internal PyTorch
-                Dataset classes, that can be used in conjunction with
-                PyTorch data loaders.
-            num_val_per_class: The number of validation samples per class.
-                For instance: If value 10 is given, a validation set of size
-                5 * 200 = 1,000 is constructed (these samples will be removed
-                from the training set).
-                Note, validation samples use the same data augmentation pipeline
-                as test samples.
-        """
         # We keep the full path to each image in memory, so we don't need to
         # tell the super class the root path to each image (i.e., samples
         # contain absolute not relative paths).
@@ -314,8 +327,9 @@ class CUB2002011(LargeImgDataset):
 
     def _plot_sample(self, fig, inner_grid, num_inner_plots, ind, inputs,
                      outputs=None, predictions=None):
-        """This method overwrites a baseclass method. Please see docstring of
-        corresponding super class."""
+        """Implementation of abstract method
+        :meth:`data.dataset.Dataset._plot_sample`.
+        """
         ax = plt.Subplot(fig, inner_grid[0])
 
         if outputs is None:

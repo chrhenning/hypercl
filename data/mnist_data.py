@@ -12,21 +12,26 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+#
+# @title           :mnist_data.py
+# @author          :ch
+# @contact         :henningc@ethz.ch
+# @created         :08/08/2018
+# @version         :1.0
+# @python_version  :3.6.6
 """
-@title           :mnist_data.py
-@author          :ch
-@contact         :henningc@ethz.ch
-@created         :08/08/2018
-@version         :1.0
-@python_version  :3.6.6
+MNIST Dataset
+-------------
 
-A handler for the MNIST dataset.
+The module :mod:`data.mnist_data` contains a handler for the MNIST dataset.
 
 The implementation is based on an earlier implementation of a class I used in
 another project:
+
     https://git.io/fNyQL
 
 Information about the dataset can be retrieved from:
+
     http://yann.lecun.com/exdb/mnist/
 """
 
@@ -38,14 +43,25 @@ import _pickle as pickle
 import urllib.request
 import gzip
 import matplotlib.pyplot as plt
-from deprecated import deprecated
+from warnings import warn
 
 from data.dataset import Dataset
 
 class MNISTData(Dataset):
     """An instance of the class shall represent the MNIST dataset.
 
-    Attributes: (additional to baseclass)
+    The constructor checks whether the dataset has been read before (a pickle
+    dump has been generated). If so, it reads the dump. Otherwise, it
+    reads the data from scratch and creates a dump for future usage.
+
+    Args:
+        data_path (str): Where should the dataset be read from? If not existing,
+            the dataset will be downloaded into this folder.
+        use_one_hot (bool): Whether the class labels should be
+            represented in a one-hot encoding.
+        validation_size (int): The number of validation samples. Validation
+            samples will be taking from the training set (the first :math:`n`
+            samples).
     """
     _DOWNLOAD_PATH = 'http://yann.lecun.com/exdb/mnist/'
     _TRAIN_IMGS_FN = 'train-images-idx3-ubyte.gz'
@@ -59,21 +75,6 @@ class MNISTData(Dataset):
     _SUBFOLDER = 'MNIST'
     
     def __init__(self, data_path, use_one_hot=False, validation_size=5000):
-        """Read the MNIST digit classification dataset from file.
-
-        This method checks whether the dataset has been read before (a pickle
-        dump has been generated). If so, it reads the dump. Otherwise, it
-        reads the data from scratch and creates a dump for future usage.
-
-        Args:
-            data_path: Where should the dataset be read from? If not existing,
-                the dataset will be downloaded into this folder.
-            use_one_hot (default: False): Whether the class labels should be
-                represented in a one-hot encoding.
-            validation_size: The number of validation samples. Validation
-                samples will be taking from the training set (the first n
-                samples).
-        """
         super().__init__()
 
         start = time.time()
@@ -268,12 +269,14 @@ class MNISTData(Dataset):
             return images
 
     @staticmethod
-    @deprecated(reason="Use the method plot_samples instead.")
     def plot_sample(image, label=None, interactive=False, file_name=None):
         """Plot a single MNIST sample.
 
         This method is thought to be helpful for evaluation and debugging
         purposes.
+
+        .. deprecated:: 1.0
+            Please use method :meth:`data.dataset.Dataset.plot_samples` instead.
 
         Args:
             image: A single MNIST image (given as 1D vector).
@@ -285,9 +288,9 @@ class MNISTData(Dataset):
                 program will freeze until the user closes the figure.
             file_name: (optional) If a file name is provided, then the image
                 will be written into a file instead of plotted to the screen.
-
-        Returns:
         """
+        warn('Please use method "plot_samples" instead.', DeprecationWarning)
+
         if label is None:
             plt.title("MNIST Sample")
         else:
@@ -307,32 +310,8 @@ class MNISTData(Dataset):
 
     def _plot_sample(self, fig, inner_grid, num_inner_plots, ind, inputs,
                      outputs=None, predictions=None):
-        """Add a custom sample plot to the given Axes object.
-
-        Note, this method is called by the "plot_samples" method.
-
-        Note, that the number of inner subplots is configured via the method:
-            _plot_config
-
-        Args:
-            fig: An instance of class matplotlib.figure.Figure, that will
-                contains the given Axes object.
-            inner_grid: An object of the class
-                matplotlib.gridspec.GridSpecFromSubplotSpec. It can be used to
-                access the subplots of a single sample via
-                    ax = plt.Subplot(fig, inner_grid[i])
-                where i is a number between 0 and num_inner_plots-1.
-                The retrieved axes has to be added to the figure via:
-                    fig.add_subplot(ax)
-            num_inner_plots: The number inner subplots.
-            ind: The index of the "outer" subplot.
-            inputs: A 2D numpy array, containing a single sample (1 row).
-            outputs (optional): A 2D numpy array, containing a single sample
-                (1 row). If this is a classification dataset, then samples are
-                given as single labels (not one-hot encoded, irrespective of
-                the attribute is_one_hot).
-            predictions (optional): A 2D numpy array, containing a single 
-                sample (1 row).
+        """Implementation of abstract method
+        :meth:`data.dataset.Dataset._plot_sample`.
         """
         ax = plt.Subplot(fig, inner_grid[0])
 
@@ -369,18 +348,11 @@ class MNISTData(Dataset):
             fig.add_subplot(ax)
 
     def _plot_config(self, inputs, outputs=None, predictions=None):
-        """Defines properties, used by the method 'plot_samples'.
+        """Re-Implementation of method
+        :meth:`data.dataset.Dataset._plot_config`.
 
         This method has been overriden to ensure, that there are 2 subplots,
         in case the predictions are given.
-
-        Args:
-            The given arguments, are the same as the same-named arguments of
-            the method 'plot_samples'. They might be used by subclass
-            implementations to determine the configs.
-
-        Returns:
-            A dictionary with the plot configs.
         """
         plot_configs = super()._plot_config(inputs, outputs=outputs,
                                             predictions=predictions)

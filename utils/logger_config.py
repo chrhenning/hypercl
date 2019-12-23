@@ -38,6 +38,7 @@ def config_logger(name, log_file, file_level, console_level):
 
     The implementation is based on an earlier implementation of a function I
     used in another project:
+
         https://git.io/fNDZJ
 
     Args:

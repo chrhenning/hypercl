@@ -36,11 +36,13 @@ def save_checkpoint(ckpt_dict, file_path, performance_score, train_iter=None,
                     max_ckpts_to_keep=5, keep_cktp_every=2, timestamp=None):
     """Save checkpoint to file.
 
-    Usage:
-        save_checkpoint({
-            'state_dict': net.state_dict(),
-            'train_iter': curr_iteration
-        }, 'ckpts/my_net', current_test_accuracy)
+    Example:
+        .. code-block:: python
+
+            save_checkpoint({
+                'state_dict': net.state_dict(),
+                'train_iter': curr_iteration
+            }, 'ckpts/my_net', current_test_accuracy)
 
     Args:
         ckpt_dict: A dict with mostly arbitrary content. Though, most important,
@@ -56,11 +58,11 @@ def save_checkpoint(ckpt_dict, file_path, performance_score, train_iter=None,
                            training.
         train_iter (optional): If given, it will be added to the filename.
             Otherwise, existing checkpoints are simply overwritten.
-        max_ckpts_to_keep (default: 5): The maximum number of checkpoints to
+        max_ckpts_to_keep: The maximum number of checkpoints to
             keep. This will use the performance score to determine the n-1
             checkoints not to be deleted (where n is the number of
             checkpoints to keep). The current checkpoint will always be saved.
-        keep_cktp_every (default: 2, optional): If this option is not 'None',
+        keep_cktp_every: If this option is not :code:`None`,
             then every n hours one checkpoint will be permanently saved, i.e.,
             this checkpoint will not be maintained by 'max_ckpts_to_keep'
             anymore. The checkpoint to be kept will be the best one from the
@@ -236,7 +238,7 @@ def make_ckpt_list(file_path):
     score.
 
     Args:
-        file_path: See method "save_checkpoints".
+        file_path: See method :func:`save_checkpoints`.
     """
     internal_key = _INTERNAL_KEY
 
@@ -270,7 +272,7 @@ def get_best_ckpt_path(file_path):
     """Returns the path to the checkpoint with the highest score.
 
     Args:
-        file_path: See method "save_checkpoints".
+        file_path: See method :func:`save_checkpoints`.
     """
     dname, fname = os.path.split(file_path)
     assert(os.path.exists(dname))

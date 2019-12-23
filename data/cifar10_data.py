@@ -12,15 +12,18 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+#
+# @title           :cifar10_data.py
+# @author          :ch
+# @contact         :henningc@ethz.ch
+# @created         :08/08/2018
+# @version         :1.0
+# @python_version  :3.6.6
 """
-@title           :cifar10_data.py
-@author          :ch
-@contact         :henningc@ethz.ch
-@created         :08/08/2018
-@version         :1.0
-@python_version  :3.6.6
+CIFAR-10 Dataset
+----------------
 
-A handler for the CIFAR 10 dataset.
+The module :mod:`data.cifar10_data` contains a handler for the CIFAR 10 dataset.
 
 The dataset consists of 60000 32x32 colour images in 10 classes, with 6000
 images per class. There are 50000 training images and 10000 test images.
@@ -36,14 +39,31 @@ import _pickle as pickle
 import urllib.request
 import tarfile
 import matplotlib.pyplot as plt
-from deprecated import deprecated
+from warnings import warn
 
 from data.dataset import Dataset
 
 class CIFAR10Data(Dataset):
     """An instance of the class shall represent the CIFAR-10 dataset.
 
-    Attributes: (additional to baseclass)
+    Note, the constructor does not safe a data dump (via pickle) as, for
+    instance, the MNIST data handler (:class:`data.mnist_data.MNISTData`) does.
+    The reason is, that the downloaded files are already in a nice to read
+    format, such that the time saved to read the file from a dump file is
+    minimal.
+
+    Args:
+        data_path (str): Where should the dataset be read from? If not existing,
+            the dataset will be downloaded into this folder.
+        use_one_hot (bool): Whether the class labels should be represented in a
+            one-hot encoding.
+        use_data_augmentation (bool, optional): Note, this option currently only
+            applies to input batches that are transformed using the class
+            member :meth:`data.dataset.Dataset.input_to_torch_tensor` (hence,
+            **only available for PyTorch**, so far).
+        validation_size (int): The number of validation samples. Validation
+            samples will be taking from the training set (the first :math:`n`
+            samples).
     """
     _DOWNLOAD_PATH = 'https://www.cs.toronto.edu/~kriz/'
     _DOWNLOAD_FILE = 'cifar-10-python.tar.gz'
@@ -59,26 +79,6 @@ class CIFAR10Data(Dataset):
 
     def __init__(self, data_path, use_one_hot=False,
                  use_data_augmentation=False, validation_size=5000):
-        """Read the CIFAR-10 object classification dataset from file.
-
-        Note, this method does not safe a data dump (via pickle) as, for
-        instance, the MNIST data handler does. The reason is, that the
-        downloaded files are already in a nice to read format, such that the
-        time saved to read the file from a dump file is minimal.
-
-        Args:
-            data_path: Where should the dataset be read from? If not existing,
-                the dataset will be downloaded into this folder.
-            use_one_hot (default: False): Whether the class labels should be
-                represented in a one-hot encoding.
-            use_data_augmentation (optional): Note, this option currently only
-                applies to input batches that are transformed using the class
-                member "input_to_torch_tensor" (hence, only available for
-                PyTorch).
-            validation_size: The number of validation samples. Validation
-                samples will be taking from the training set (the first n
-                samples).
-        """
         super().__init__()
 
         start = time.time()
@@ -175,8 +175,9 @@ class CIFAR10Data(Dataset):
     def _read_meta(self, filename):
         """Read the meta data file.
 
-        This method will add an additional field to the _data attribute named
-        "cifar10". This dictionary will be filled with two members:
+        This method will add an additional field to the ``_data`` attribute
+        named "cifar10". This dictionary will be filled with two members:
+
             - "label_names": The names of the associated categorical class
                 labels.
             - "num_cases_per_batch": The number of samples in each batch.
@@ -280,13 +281,15 @@ class CIFAR10Data(Dataset):
         """
         return index % 10000 + 1
 
-    @deprecated(reason="Use the method plot_samples instead.")
     def plot_sample(self, image, label=None, figsize = 1.5, interactive=False,
                     file_name=None):
         """Plot a single CIFAR-10 sample.
 
         This method is thought to be helpful for evaluation and debugging
         purposes.
+
+        .. deprecated:: 1.0
+            Please use method :meth:`data.dataset.Dataset.plot_samples` instead.
 
         Args:
             image: A single CIFAR-10 image (given as 1D vector).
@@ -299,9 +302,9 @@ class CIFAR10Data(Dataset):
                 program will freeze until the user closes the figure.
             file_name: (optional) If a file name is provided, then the image
                 will be written into a file instead of plotted to the screen.
-
-        Returns:
         """
+        warn('Please use method "plot_samples" instead.', DeprecationWarning)
+
         plt.figure(figsize = (figsize, figsize))
 
         if label is None:
@@ -327,31 +330,27 @@ class CIFAR10Data(Dataset):
         """This method can be used to map the internal numpy arrays to PyTorch
         tensors.
 
+        Note, this method has been overwritten from the base class.
+
         The input images are preprocessed if data augmentation is enabled.
         Preprocessing involves normalization and (for training mode) random
         perturbations.
 
         Args:
-            x: A 2D numpy array, containing inputs as provided by this dataset.
-            device: The PyTorch device onto which the input should be mapped.
-            mode: This is the same as the mode attribute in the class
-                  NetworkBase, that can be used to distinguish between training
-                  and inference (e.g., if special input processing should be
-                  used during training).
-                  Valid values are: 'train' and 'inference'.
-            force_no_preprocessing: In case preprocessing is applied to the
-                inputs (e.g., normalization or random flips/crops), this option
-                can be used to prohibit any kind of manipulation. Hence, the
-                inputs are transformed into PyTorch tensors on an "as is" basis.
+            (....): See docstring of method
+                :meth:`data.dataset.Dataset.input_to_torch_tensor`.
 
         Returns:
-            The given input x as PyTorch tensor.
+            (torch.Tensor): The given input ``x`` as PyTorch tensor.
         """
         if self._augment_inputs and not force_no_preprocessing:
             if mode == 'inference':
                 transform = self._test_transform
-            else:
+            elif mode == 'train':
                 transform = self._train_transform
+            else:
+                raise ValueError('"%s" not a valid value for argument "mode".'
+                                 % mode)
 
             return CIFAR10Data.torch_augment_images(x, device, transform)
 
@@ -361,32 +360,8 @@ class CIFAR10Data(Dataset):
 
     def _plot_sample(self, fig, inner_grid, num_inner_plots, ind, inputs,
                      outputs=None, predictions=None):
-        """Add a custom sample plot to the given Axes object.
-
-        Note, this method is called by the "plot_samples" method.
-
-        Note, that the number of inner subplots is configured via the method:
-            _plot_config
-
-        Args:
-            fig: An instance of class matplotlib.figure.Figure, that will
-                contains the given Axes object.
-            inner_grid: An object of the class
-                matplotlib.gridspec.GridSpecFromSubplotSpec. It can be used to
-                access the subplots of a single sample via
-                    ax = plt.Subplot(fig, inner_grid[i])
-                where i is a number between 0 and num_inner_plots-1.
-                The retrieved axes has to be added to the figure via:
-                    fig.add_subplot(ax)
-            num_inner_plots: The number inner subplots.
-            ind: The index of the "outer" subplot.
-            inputs: A 2D numpy array, containing a single sample (1 row).
-            outputs (optional): A 2D numpy array, containing a single sample 
-                (1 row). If this is a classification dataset, then samples are
-                given as single labels (not one-hot encoded, irrespective of
-                the attribute is_one_hot).
-            predictions (optional): A 2D numpy array, containing a single 
-                sample (1 row).
+        """Implementation of abstract method
+        :meth:`data.dataset.Dataset._plot_sample`.
         """
         ax = plt.Subplot(fig, inner_grid[0])
 
@@ -426,18 +401,11 @@ class CIFAR10Data(Dataset):
             fig.add_subplot(ax)
         
     def _plot_config(self, inputs, outputs=None, predictions=None):
-        """Defines properties, used by the method 'plot_samples'.
+        """Re-Implementation of method
+        :meth:`data.dataset.Dataset._plot_config`.
 
         This method has been overriden to ensure, that there are 2 subplots,
         in case the predictions are given.
-
-        Args:
-            The given arguments, are the same as the same-named arguments of
-            the method 'plot_samples'. They might be used by subclass
-            implementations to determine the configs.
-
-        Returns:
-            A dictionary with the plot configs.
         """
         plot_configs = super()._plot_config(inputs, outputs=outputs,
                                             predictions=predictions)
@@ -457,19 +425,22 @@ class CIFAR10Data(Dataset):
         """Get data augmentation pipelines for CIFAR-10 inputs.
 
         Note, the augmentation is inspired by the augmentation proposed in:
-            https://www.aiworkbox.com/lessons/augment-the-cifar10-dataset-using-the-randomhorizontalflip-and-randomcrop-transforms
+            https://www.aiworkbox.com/lessons/augment-the-cifar10-dataset-using\
+-the-randomhorizontalflip-and-randomcrop-transforms
 
-        Note, we use the same data augmentation pipeline for CIFAR-100, as the
-        images are very similar. Here is an example where they use slightly
-        different normalization values, but we ignore this for now:
+        Note:
+            We use the same data augmentation pipeline for CIFAR-100, as the
+            images are very similar. Here is an example where they use slightly
+            different normalization values, but we ignore this for now:
             https://zhenye-na.github.io/2018/10/07/pytorch-resnet-cifar100.html
 
         Returns:
-            A tuple:
-                train_transform: A transforms pipeline that applies random
-                    transformations and normalizes the image.
-                test_transform: Similar to train_transform, but no random
-                    transformations are applied.
+            (tuple): Tuple containing:
+
+                - **train_transform**: A transforms pipeline that applies random
+                  transformations and normalizes the image.
+                - **test_transform**: Similar to train_transform, but no random
+                  transformations are applied.
         """
         # Copyright 2017-2018 aiworkbox.com
         # Unfortunately, no license was visibly provided with this code.
@@ -505,12 +476,14 @@ class CIFAR10Data(Dataset):
         """Augment CIFAR-10 images using a given PyTorch transformation.
 
         Args:
-            x: A 2D-Numpy array containing CIFAR-10 images.
-            device: The PyTorch device on which the resulting tensor should be.
-            transform: A torchvision.transforms method to modify the data.
+            x (numpy.ndarray): A 2D-Numpy array containing CIFAR-10 images.
+            device (torch.device or int): The PyTorch device on which the
+                resulting tensor should be.
+            transform: A :mod:`torchvision.transforms` method to modify the
+                data.
 
         Returns:
-            The augmented images as PyTorch tensor.
+            (torch.Tensor): The augmented images as PyTorch tensor.
         """
         from torch import stack
 

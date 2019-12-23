@@ -36,13 +36,13 @@ import os
 import shutil
 import pickle
 import itertools
+import matplotlib.pyplot as plt
 
 from toy_example.regression1d_data import ToyRegression
 import toy_example.gaussian_mixture_data as gmm_data
 from toy_example.main_model import MainNetwork
 from toy_example.hyper_model import HyperNetwork
 from toy_example.task_recognition_model import RecognitionNet
-
 import utils.misc as misc
 
 def parse_cmd_arguments(mode='train_regression', default=False, argv=None):
@@ -51,11 +51,13 @@ def parse_cmd_arguments(mode='train_regression', default=False, argv=None):
     Args:
         mode: For what script should the parser assemble the set of command-line
             parameters? Options:
+
                 - "train_regression": Parser contains the set of parameters to
                   train a regression model for CL with 1D functions.
                 - "train_mt_regression": Parser contains the set of parameters
                   to train a regression model for multi-task learning with 1D
                   functions.
+
         default (optional): If True, command-line arguments will be ignored and
             only the default values will be parsed.
         argv (optional): If provided, it will be treated as a list of command-
@@ -91,6 +93,10 @@ def parse_cmd_arguments(mode='train_regression', default=False, argv=None):
     parser.add_argument('--std_normal_init', type=float, default=0.02,
                         help='If normal initialization is used, this will ' +
                              'be the standard deviation used.')
+    parser.add_argument('--use_hyperfan_init', action='store_true',
+                        help='Initialize the hypernetwork using the hyperfan ' +
+                             'init proposed in the following paper: ' +
+                             'https://openreview.net/forum?id=H1lma24tPB')
 
     ### Dataset
     parser.add_argument('--dataset', type=int, default=0,
@@ -117,6 +123,8 @@ def parse_cmd_arguments(mode='train_regression', default=False, argv=None):
                              'its own output head.')
 
     ### Miscellaneous options
+    parser.add_argument('--no_plots', action='store_true',
+                        help='If no plots should be shown during runtime.')
     parser.add_argument('--val_iter', type=int, default=500,
                         help='How often the validation should be performed ' +
                              'during training.')
@@ -234,8 +242,8 @@ def _cl_arguments_ours(parser):
                              '1 - A simple regularizer is added to the task-' +
                              'specific loss that enforces a constant input-' +
                              'output mapping for previous tasks. See ' +
-                             'method "calc_value_preserving_reg" of class ' +
-                             '"HyperNetwork". \n' +
+                             'method "calc_value_preserving_reg" in module ' +
+                             '"hnet_regularizer". \n' +
                              '2 - Same as 1, but a linearization via a first-' +
                              'order Taylor approximation has been applied. \n' +
                              '3 - Use EWC to avoid catastrophic forgetting ' +
@@ -495,17 +503,21 @@ def _generate_tasks(config):
         num_tasks: Number of generated tasks.
     """
     if config.dataset == 0: # 1D function regression.
-        return _generate_1d_tasks(config)
+        return _generate_1d_tasks(show_plots=not config.no_plots,
+                                  data_random_seed=config.data_random_seed)
     elif config.dataset == 1: # Regression with GMM inputs.
         return _generate_gmm_tasks(config)
     else:
         raise ValueError('Dataset %d unknown!' % config.dataset)
 
-def _generate_1d_tasks(config):
+def _generate_1d_tasks(show_plots=True, data_random_seed=42, writer=None):
     """Generate a set of tasks for 1D regression.
 
     Args:
-        See docstring of method "_generate_tasks".
+        show_plots: Visualize the generated datasets.
+        data_random_seed: Random seed that should be applied to the
+            synthetic data generation.
+        writer: Tensorboard writer, in case plots should be logged.
 
     Returns:
         data_handlers: A data handler for each task (instance of class
@@ -587,8 +599,17 @@ def _generate_1d_tasks(config):
         print('Generating %d-th task.' % (i))
         dhandlers.append(ToyRegression(train_inter=x_domains[i],
             num_train=100, test_inter=x_domains[i], num_test=50,
-            map_function=map_funcs[i], std=std, rseed=config.data_random_seed))
-        dhandlers[-1].plot_dataset()
+            map_function=map_funcs[i], std=std, rseed=data_random_seed))
+
+        if writer is not None:
+            dhandlers[-1].plot_dataset(show=False)
+            writer.add_figure('task_%d/dataset' % i, plt.gcf(),
+                              close=not show_plots)
+            if show_plots:
+                misc.repair_canvas_and_show_fig(plt.gcf())
+
+        elif show_plots:
+            dhandlers[-1].plot_dataset()
 
     return dhandlers, num_tasks
 
@@ -616,14 +637,15 @@ def _generate_gmm_tasks(config):
         std = 0.2
 
     covs = [std**2 * np.eye(len(mean)) for mean in means]
-    dhandlers = gmm_data.get_gmm_taks(means=means, covs=covs, num_train=1000,
+    dhandlers = gmm_data.get_gmm_tasks(means=means, covs=covs, num_train=1000,
         num_test=50, rseed=config.data_random_seed)
     num_tasks = len(dhandlers)
 
     #for i in range(num_tasks):
     #    print('Task %d:' % (i))
     #    dhandlers[i].plot_dataset()
-    gmm_data.GaussianData.plot_datasets(dhandlers)
+    if not config.no_plots:
+        gmm_data.GaussianData.plot_datasets(dhandlers)
 
     return dhandlers, num_tasks
 
@@ -658,29 +680,17 @@ def _generate_networks(config, data_handlers, device, create_hnet=True,
     if config.multi_head:
         n_y = n_y * num_tasks
 
-    def str_to_act(act_str):
-        if act_str == 'linear':
-            act = None
-        elif act_str == 'sigmoid':
-            act = torch.nn.Sigmoid()
-        elif act_str == 'relu':
-            act = torch.nn.ReLU()
-        elif act_str == 'elu':
-            act = torch.nn.ELU()
-        else:
-            raise Exception('Activation function %s unknown.' % act_str)
-        return act
-
     main_arch = misc.str_to_ints(config.main_arch)
     main_shapes = MainNetwork.weight_shapes(n_in=n_x, n_out=n_y,
                                             hidden_layers=main_arch)
-    mnet = MainNetwork(main_shapes, activation_fn=str_to_act(config.main_act),
+    mnet = MainNetwork(main_shapes,
+                       activation_fn=misc.str_to_act(config.main_act),
                        use_bias=True, no_weights=create_hnet).to(device)
     if create_hnet:
         hnet_arch = misc.str_to_ints(config.hnet_arch)
         hnet = HyperNetwork(main_shapes, num_tasks, layers=hnet_arch,
             te_dim=config.emb_size,
-            activation_fn=str_to_act(config.hnet_act)).to(device)
+            activation_fn=misc.str_to_act(config.hnet_act)).to(device)
         init_params = list(hnet.parameters())
     else:
         hnet = None
@@ -692,13 +702,13 @@ def _generate_networks(config, data_handlers, device, create_hnet=True,
             rnet_shapes = MainNetwork.weight_shapes(n_in=n_x, n_out=num_tasks,
                 hidden_layers=ae_arch, use_bias=True)
             rnet = MainNetwork(rnet_shapes,
-                activation_fn=str_to_act(config.ae_act), use_bias=True,
+                activation_fn=misc.str_to_act(config.ae_act), use_bias=True,
                 no_weights=False, dropout_rate=-1,
                 out_fn=lambda x : F.softmax(x, dim=1))
         else:
             rnet = RecognitionNet(n_x, num_tasks, dim_z=config.ae_dim_z,
                                   enc_layers=ae_arch,
-                                  activation_fn=str_to_act(config.ae_act),
+                                  activation_fn=misc.str_to_act(config.ae_act),
                                   use_bias=True).to(device)
         init_params += list(rnet.parameters())
     else:
@@ -717,6 +727,9 @@ def _generate_networks(config, data_handlers, device, create_hnet=True,
     if create_hnet:
         for temb in hnet.get_task_embs():
             torch.nn.init.normal_(temb, mean=0., std=config.std_normal_temb)
+
+    if config.use_hyperfan_init:
+        hnet.apply_hyperfan_init(temb_var=config.std_normal_temb**2)
 
     return mnet, hnet, rnet
 

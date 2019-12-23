@@ -43,6 +43,7 @@ def train_with_embs(data_handlers, mnet, hnet, device, config, writer,
 
     Note, there are several ways to do this. There are methods that ignore the
     task identity of samples, e.g.,
+
         - training the pure main network on a combined dataset (which is the
           typical baseline in the literature)
         - training a combination of main net and hypernet with a single task
@@ -70,8 +71,8 @@ def train_with_embs(data_handlers, mnet, hnet, device, config, writer,
     identity.
 
     Args:
+        (....): See docstring of method :func:`toy_example.train.train_reg`.
         data_handlers: A list of dataset handlers, one for each task.
-        See docstring of method train_reg.
         mixed_gradient: If False,in each training iteration a random task will
             be selected and the training step is computed based on samples
             from this task only. If True, random samples from all tasks are
@@ -152,8 +153,8 @@ def train_main_only(data_handlers, mnet, device, config, writer):
     hypernetwork is used.
 
     Args:
+        (....): See docstring of method :func:`toy_example.train.train_reg`.
         data_handlers: A list of dataset handlers, one for each task.
-        See docstring of method train_reg.
     """
     print('Training network ...')
 
@@ -233,8 +234,8 @@ def train_without_embs(data_handlers, mnet, hnet, device, config, writer):
 
 
     Args:
+        (....): See docstring of method :func:`toy_example.train.train_reg`.
         data_handlers: A list of dataset handlers, one for each task.
-        See docstring of method train_reg.
     """
     print('Training network ...')
 
@@ -324,7 +325,7 @@ def train_rnet(data_handlers, mnet, hnet, rnet, device, config, writer):
     Note, mnet and hnet are only needed for testing purposes.
 
     Args:
-        See docstring of method train_reg.
+        (....): See docstring of method :func:`toy_example.train.train_reg`.
         data_handlers: A list of dataset handlers, one for each task.
         rnet: The recognition network.
     """
@@ -386,9 +387,11 @@ def run():
     """Run the script
 
     Returns:
-        final_mse: Final MSE for each task.
-        (final_rnet_mse): Final MSE for each task, when using recognition
-            model to infer task identity during testing.
+        (tuple): Tuple containing:
+
+        - **final_mse**: Final MSE for each task.
+        - **final_rnet_mse** (optional): Final MSE for each task, when using
+          recognition model to infer task identity during testing.
     """
     config = train_utils.parse_cmd_arguments(mode='train_mt_regression')
     assert(config.method in range(3))

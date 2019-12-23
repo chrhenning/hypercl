@@ -44,7 +44,7 @@ def train_ewc(task_id, data, mnet, device, config, writer):
     loss = task_loss + beta * ewc_regularizer.
 
     Args:
-        See docstring of method train_reg.
+        (....): See docstring of method :func:`toy_example.train.train_reg`.
     """
     print('Training network ...')
 
