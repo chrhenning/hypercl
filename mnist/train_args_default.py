@@ -95,14 +95,15 @@ def _set_default_split(config):
     config.class_hyper_chunks = 42000
     config.class_hnet_arch = '10,10'
     config.class_beta = 0.01
-
+    
+    #HNET+TIR
     if config.infer_task_id:
-        #HNET+TIR
         config.hard_targets = True
         config.dec_fc_arch = '300,150'
         config.rp_beta = 0.05
+    
+    #HNET+R
     else:
-        #HNET+R
         config.dec_fc_arch = '250,350'
         
     return config
