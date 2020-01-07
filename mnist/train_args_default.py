@@ -98,6 +98,7 @@ def _set_default_split(config):
 
     if config.infer_task_id:
         #HNET+TIR
+        config.hard_targets = True
         config.dec_fc_arch = '300,150'
         config.rp_beta = 0.05
     else:
