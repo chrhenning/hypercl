@@ -101,7 +101,7 @@ def _set_default_split(config):
         config.hard_targets = True
         config.dec_fc_arch = '300,150'
         config.rp_beta = 0.05
-    
+
     #HNET+R
     else:
         config.dec_fc_arch = '250,350'
@@ -202,7 +202,6 @@ def _set_default_gan(config):
     """
 
     #TODO
-    
     return config
 
 if __name__ == '__main__':
