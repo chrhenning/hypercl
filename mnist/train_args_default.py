@@ -99,8 +99,7 @@ def _set_default_split(config):
     #HNET+TIR
     if config.infer_task_id:
         config.hard_targets = True
-        config.dec_fc_arch = '300,150'
-        config.rp_beta = 0.05
+        config.dec_fc_arch = '50,150'
 
     #HNET+R
     else:
@@ -158,7 +157,6 @@ def _set_default_permuted(config):
 
     #perm100 classifier config
     if config.num_tasks >= 100:
-        print("Attention: permuted100 not tested after the code migration.")
         config.class_temb_size = 128
         config.class_emb_size = 12
         config.class_hnet_act = "relu"
@@ -202,6 +200,7 @@ def _set_default_gan(config):
     """
 
     #TODO
+
     return config
 
 if __name__ == '__main__':
