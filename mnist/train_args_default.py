@@ -78,7 +78,6 @@ def _set_default_split(config):
     config.num_tasks = 5
     config.padding = 0
     config.no_lookahead = False
-    config.hard_targets = False
 
     # VAE hnet
     config.rp_temb_size = 96
@@ -103,6 +102,7 @@ def _set_default_split(config):
 
     #HNET+R
     else:
+        config.hard_targets = False
         config.dec_fc_arch = '250,350'
         
     return config
