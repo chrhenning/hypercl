@@ -13,7 +13,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """
-@title           :toy_regression/hyper_model.py
+@title           :toy_example/hyper_model.py
 @author          :ch
 @contact         :henningc@ethz.ch
 @created         :10/23/2018
@@ -47,7 +47,7 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
-from mnets.mnet_interface import MainNetInterface as MnetAPIV2
+from mnets.mnet_interface import MainNetInterface
 from utils import init_utils as iutils
 from utils.module_wrappers import CLHyperNetInterface
 from utils.torch_utils import init_params
@@ -200,12 +200,13 @@ class HyperNetwork(nn.Module, CLHyperNetInterface):
 
         self._theta_shapes = self._hidden_dims + self._out_dims
 
-        ntheta = MnetAPIV2.shapes_to_num_weights(self._theta_shapes)
+        ntheta = MainNetInterface.shapes_to_num_weights(self._theta_shapes)
         ntembs = int(np.sum([t.numel() for t in self._task_embs])) \
                 if not no_te_embs else 0
         self._num_weights = ntheta + ntembs
 
-        self._num_outputs = MnetAPIV2.shapes_to_num_weights(self.target_shapes)
+        self._num_outputs = MainNetInterface.shapes_to_num_weights( \
+            self.target_shapes)
 
         if verbose:
             print('Constructed hypernetwork with %d parameters (' % (ntheta \
@@ -442,7 +443,7 @@ class HyperNetwork(nn.Module, CLHyperNetInterface):
 
         Then, we can modify the variance of the weights of each output head in
         the hypernet to obtain the variance for the main net weight tensors that
-        we would typically obtain when apllying Xavier or Kaiming to the main
+        we would typically obtain when applying Xavier or Kaiming to the main
         network directly.
 
         Warning:
@@ -559,15 +560,18 @@ class HyperNetwork(nn.Module, CLHyperNetInterface):
             # Sum of uncorrelated variables.
             temb_var += self._temb_std**2
 
+        assert self._size_ext_input is None or self._size_ext_input > 0
+        assert self._noise_dim == -1 or self._noise_dim > 0
+
         inp_dim = self._te_dim + \
             (self._size_ext_input if self._size_ext_input is not None else 0) \
-            + (self._noise_dim if self._noise_dim is not None else 0)
+            + (self._noise_dim if self._noise_dim != -1 else 0)
 
-        input_variance = (self._te_dim  / inp_dim) * temb_var
+        input_variance = (self._te_dim / inp_dim) * temb_var
         if self._size_ext_input is not None:
-            input_variance += (self._size_ext_input  / inp_dim) * ext_inp_var
-        if self._noise_dim is not None:
-            input_variance += (self._noise_dim  / inp_dim) * 1.
+            input_variance += (self._size_ext_input / inp_dim) * ext_inp_var
+        if self._noise_dim != -1:
+            input_variance += (self._noise_dim / inp_dim) * 1.
 
         ### Initialize hidden layers to preserve variance ###
         # We initialize biases with 0 (see Xavier assumption 4 in the Hyperfan

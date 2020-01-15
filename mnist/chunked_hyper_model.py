@@ -12,7 +12,8 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-# @title           :hyper_model.py
+#
+# @title           :chunked_hyper_model.py
 # @author          :ch
 # @contact         :henningc@ethz.ch
 # @created         :10/25/2018
@@ -414,7 +415,7 @@ class ChunkedHyperNetworkHandler(nn.Module, CLHyperNetInterface):
                   variances of the hypernetwork should correspond to fan-out
                   variances.
                 - ``harmonic``: Use the harmonic mean of the fan-in and fan-out
-                  varaince as target variance of the hypernetwork output.
+                  variance as target variance of the hypernetwork output.
             use_xavier (bool): Whether Kaiming (``False``) or Xavier (``True``)
                 init should be used.
             temb_var (float): The initial variance of the task embeddings.
@@ -448,15 +449,17 @@ class ChunkedHyperNetworkHandler(nn.Module, CLHyperNetInterface):
             # Sum of uncorrelated variables.
             temb_var += self._temb_std**2
 
+        assert self._noise_dim == -1 or self._noise_dim > 0
+
         # TODO external inputs are not yet considered.
         inp_dim = self._te_dim + \
-            (self._noise_dim if self._noise_dim is not None else 0)
+            (self._noise_dim if self._noise_dim != -1 else 0)
             #(self._size_ext_input if self._size_ext_input is not None else 0) \
 
         inp_var = (self._te_dim  / inp_dim) * temb_var
         #if self._size_ext_input is not None:
         #    inp_var += (self._size_ext_input  / inp_dim) * ext_inp_var
-        if self._noise_dim is not None:
+        if self._noise_dim != -1:
             inp_var += (self._noise_dim  / inp_dim) * 1.
 
         c_dim = self._ce_dim
@@ -526,9 +529,10 @@ class ChunkedHyperNetworkHandler(nn.Module, CLHyperNetInterface):
         max_inp_var = (inp_dim+c_dim) / inp_dim * min(chunk_vars)
         max_inp_std = math.sqrt(max_inp_var)
         print('Initializing hypernet with Chunked Hyperfan Init ...')
-        print('Note, hypernetwork inputs should have an initial total ' +
-              'variance (std) smaller than %f (%f) in order for this ' \
-              % (max_inp_var, max_inp_std) + 'method to work properly.')
+        if inp_var >= max_inp_var:
+            warn('Note, hypernetwork inputs should have an initial total ' +
+                 'variance (std) smaller than %f (%f) in order for this ' \
+                 % (max_inp_var, max_inp_std) + 'method to work properly.')
 
         ### Compute variances of chunk embeddings ###
         # We could have done that in the previous loop. But I think the code is

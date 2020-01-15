@@ -317,7 +317,7 @@ def main_net_args(parser, allowed_nets=['fc'], dfc_arch='100,100',
                                  'Default: %(default)s.')
 
     if 'mlp' in allowed_nets:
-        agroup.add_argument('--%smlp_arch' % p, type=str, default=dfc_arch,
+        agroup.add_argument('--%smlp_arch' % p, type=str, default=dmlp_arch,
                             help='If using a "fc" %s network, this will ' % n +
                                  'specify the hidden layers. ' +
                                  'Default: %(default)s.')
