@@ -318,7 +318,7 @@ def main_net_args(parser, allowed_nets=['fc'], dfc_arch='100,100',
 
     if 'mlp' in allowed_nets:
         agroup.add_argument('--%smlp_arch' % p, type=str, default=dmlp_arch,
-                            help='If using a "fc" %s network, this will ' % n +
+                            help='If using a "mlp" %s network, this will ' % n +
                                  'specify the hidden layers. ' +
                                  'Default: %(default)s.')
 
@@ -333,7 +333,7 @@ def main_net_args(parser, allowed_nets=['fc'], dfc_arch='100,100',
 
     if show_no_bias:
         agroup.add_argument('--%sno_bias' % p, action='store_true',
-                        help='No biases will be used in the %s network.' % n +
+                        help='No biases will be used in the %s network. ' % n +
                              'Note, does not affect normalization (like ' +
                              'batchnorm).')
 

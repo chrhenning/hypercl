@@ -241,13 +241,13 @@ def get_mnet_model(config, net_type, in_shape, out_shape, device, cprefix=None,
     assign = lambda x, y : y if x is None else x
 
     if net_type == 'mlp':
-        assert(hc(config, 'mlp_arch'))
+        assert(hc('mlp_arch'))
         assert(len(in_shape) == 1 and len(out_shape) == 1)
 
         mnet = MLP(n_in=in_shape[0], n_out=out_shape[0],
-            hidden_layers=gc('mlp_arch'),
+            hidden_layers=misc.str_to_ints(gc('mlp_arch')),
             activation_fn=assign(net_act, torch.nn.ReLU()),
-            use_bias=assign(no_bias, False),
+            use_bias=not assign(no_bias, False),
             no_weights=no_weights,
             #init_weights=None,
             dropout_rate=assign(dropout_rate, -1),
