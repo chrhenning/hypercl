@@ -32,6 +32,15 @@ $ python3 -m unittest discover -s tests/ -t .
 
 Please refer to the [README](docs/README.md) in the subfolder [docs](docs) for instructions on how to compile and open the documentation.
 
+## Setup Python Environment
+
+We use [conda](https://www.anaconda.com/) to manage Python environments. To create an environment that already fulfills all package requirements of this repository, simply execute
+
+```console
+$ conda env create -f environment.yml
+$ conda activate hypercl_env
+```
+
 ## Citation
 Please cite our paper if you use this code in your research project.
 
