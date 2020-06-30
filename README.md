@@ -2,7 +2,7 @@
 
 A continual learning approach that has the flexibility to learn a dedicated set of parameters, fine-tuned for every task, that doesn't require an increase in the number of trainable weights and is robust against catastrophic forgetting.
 
-For details on this approach please read [our paper](https://arxiv.org/abs/1906.00695).
+For details on this approach please read [our paper](https://arxiv.org/abs/1906.00695). Experiments on continual learning with hypernetworks using sequential data and recurrent networks can be found in [this repository](https://github.com/mariacer/cl_in_rnns).
 
 ## Toy Examples
 
