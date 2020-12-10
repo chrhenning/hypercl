@@ -515,7 +515,7 @@ class HyperNetwork(nn.Module, CLHyperNetInterface):
             was set.
 
         Note:
-            We hypernet inputs should be zero mean.
+            All hypernet inputs should be zero mean.
 
         Args:
             method (str): The type of initialization that should be applied.
@@ -643,7 +643,7 @@ class HyperNetwork(nn.Module, CLHyperNetInterface):
                 var_in = c_relu / (2. * fan_in * input_variance)
                 num = c_relu * (1. - m_fan_in/m_fan_out)
                 denom = fan_in * input_variance
-                var_out = c_relu / max(0, num / denom)
+                var_out = max(0, num / denom)
 
             else:
                 m_fan_in, m_fan_out = iutils.calc_fan_in_and_out(out_shape)
@@ -664,6 +664,8 @@ class HyperNetwork(nn.Module, CLHyperNetInterface):
             std = math.sqrt(var)
             a = math.sqrt(3.0) * std
             torch.nn.init._no_grad_uniform_(self.theta[i], -a, a)
+            
+            j += 1
 
 if __name__ == '__main__':
     pass
