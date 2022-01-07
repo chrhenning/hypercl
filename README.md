@@ -4,7 +4,7 @@ A continual learning approach that has the flexibility to learn a dedicated set 
 
 For details on this approach please read [our paper](https://arxiv.org/abs/1906.00695). You can find our spotlight presentation [here](https://iclr.cc/virtual_2020/poster_SJgwNerKvB.html) and a more detailed introduction in [this talk](https://youtu.be/sFNAXF8H0IY?t=959). Experiments on continual learning with hypernetworks using sequential data and recurrent networks can be found in [this repository](https://github.com/mariacer/cl_in_rnns). Furthermore, [this repository](https://github.com/chrhenning/posterior_replay_cl) studies a probabilistic extension of the proposed CL algorithm.
 
-If you are interested in working with **hypernetworks in PyTorch**, check out the package [hypnettorch](https://github.com/chrhenning/hypnettorch).
+If you are interested in working with **hypernetworks in PyTorch**, check out the package [hypnettorch](https://github.com/chrhenning/hypnettorch). The package also provides an [example implementation](https://hypnettorch.readthedocs.io/en/latest/examples.html#continual-learning-with-hypernetworks) of our method for task-incremental learning.
 
 ## Toy Examples
 
