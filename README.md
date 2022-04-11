@@ -47,9 +47,9 @@ $ conda activate hypercl_env
 Please cite our paper if you use this code in your research project.
 
 ```
-@inproceedings{oshg2019hypercl,
+@inproceedings{ohs2019hypercl,
 title={Continual learning with hypernetworks},
-author={Johannes von Oswald and Christian Henning and Jo{\~a}o Sacramento and Benjamin F. Grewe},
+author={Johannes von Oswald and Christian Henning and Benjamin F. Grewe and Jo{\~a}o Sacramento},
 booktitle={International Conference on Learning Representations},
 year={2020},
 url={https://arxiv.org/abs/1906.00695}
